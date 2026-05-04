@@ -1,0 +1,8 @@
+skills:
+  vuetify-skilld:
+    repo: skilld-dev/vue-ecosystem-skills
+    source: github
+    syncedAt: 2026-05-04
+    generator: external
+    path: skills/vuetify-skilld
+    ref: main
