@@ -68,7 +68,9 @@ const formRef = ref(null)
 const imagePreview = ref({})
 const filePreview = ref({})
 const filesToDelete = ref({})
+const imagesToDelete = ref({})
 const fileInputKey = ref(0)
+const imageInputKey = ref(0)
 
 const getRelations = () => {
   const relationsFromFormFields = filteredFormFields.value.filter(
@@ -107,9 +109,11 @@ const formData = useForm(
 const initFields = () => {
   // Resetear archivos a eliminar, previews y forzar reseteo del input
   filesToDelete.value = {}
+  imagesToDelete.value = {}
   filePreview.value = {}
   imagePreview.value = {}
   fileInputKey.value++
+  imageInputKey.value++
 
   if (type.value === "edit" && item.value) {
     filteredFormFields.value.forEach((field) => {
@@ -131,9 +135,25 @@ const initFields = () => {
       } else {
         formData[field.field] = item.value[field.field]
         if (field.type === "image" && item.value[field.field]) {
-          imagePreview.value[field.field] = `/laravel-auto-crud/${
-            item.value[field.field]
-          }`
+          if (field.multiple) {
+            // Múltiples imágenes - limpiar imágenes pendientes y parsear JSON existente
+            formData[field.field] = null
+            if (item.value[field.field]) {
+              try {
+                imagePreview.value[field.field] = JSON.parse(
+                  item.value[field.field],
+                )
+              } catch (e) {
+                imagePreview.value[field.field] = []
+              }
+            } else {
+              imagePreview.value[field.field] = []
+            }
+          } else {
+            imagePreview.value[field.field] = `/laravel-auto-crud/${
+              item.value[field.field]
+            }`
+          }
         }
         if (field.type === "file") {
           if (field.multiple) {
@@ -239,22 +259,82 @@ const submit = () => {
   }
 }
 
-const handleImageUpload = (file, imageFieldName) => {
-  formData.transform((data) => ({
-    ...data,
-    [imageFieldName + "_edited"]: true,
-  }))
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      imagePreview.value[imageFieldName] = e.target.result
+const handleImageUpload = (file, imageFieldName, multiple = false) => {
+  if (file && file.target.files.length > 0) {
+    if (multiple) {
+      // Múltiples imágenes
+      const files = Array.from(file.target.files)
+      formData[imageFieldName] = files
+      // Incluir también imágenes a eliminar si las hay
+      const deleteImages = imagesToDelete.value[imageFieldName] || []
+      formData.transform((data) => ({
+        ...data,
+        [imageFieldName]: files,
+        [imageFieldName + "_edited"]: true,
+        ...(deleteImages.length > 0 && {
+          [imageFieldName + "_delete"]: deleteImages,
+        }),
+      }))
+    } else {
+      // Imagen única
+      formData.transform((data) => ({
+        ...data,
+        [imageFieldName + "_edited"]: true,
+      }))
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        imagePreview.value[imageFieldName] = e.target.result
+      }
+      reader.readAsDataURL(file.target.files[0])
+      formData[imageFieldName] = file.target.files[0]
     }
-    reader.readAsDataURL(file.target.files[0])
-    formData[imageFieldName] = file.target.files[0]
   } else {
-    formData[imageFieldName] = null
-    imagePreview.value[imageFieldName] = null
+    // Si se vacía el input, limpiar imágenes pendientes
+    if (multiple) {
+      clearImageInput(imageFieldName)
+    } else {
+      formData[imageFieldName] = null
+      imagePreview.value[imageFieldName] = null
+    }
   }
+
+  nextTick(() => {
+    formRef.value?.validate()
+  })
+}
+
+const clearImageInput = (imageFieldName) => {
+  // Verificar si hay imágenes marcadas para eliminar
+  const hasImagesToDelete =
+    imagesToDelete.value[imageFieldName] &&
+    imagesToDelete.value[imageFieldName].length > 0
+
+  // Limpiar solo las imágenes nuevas del input
+  formData[imageFieldName] = null
+
+  if (hasImagesToDelete) {
+    // Hay imágenes marcadas para eliminar, mantener dirty
+    formData.transform((data) => ({
+      ...data,
+      [imageFieldName]: null,
+      [imageFieldName + "_delete"]: imagesToDelete.value[imageFieldName],
+      [imageFieldName + "_edited"]: true,
+    }))
+  } else {
+    // No hay imágenes marcadas para eliminar, resetear el campo
+    formData.defaults(imageFieldName, null)
+    formData.reset(imageFieldName)
+    formData.transform((data) => {
+      const newData = { ...data }
+      delete newData[imageFieldName + "_edited"]
+      delete newData[imageFieldName + "_delete"]
+      return newData
+    })
+  }
+
+  nextTick(() => {
+    formRef.value?.validate()
+  })
 }
 
 const handleFileUpload = (file, fileFieldName, multiple = false) => {
@@ -325,14 +405,41 @@ const clearFileInput = (fileFieldName) => {
   })
 }
 
-const removeImage = (imageFieldName) => {
-  formData.transform((data) => ({
-    ...data,
-    [imageFieldName + "_edited"]: true,
-  }))
-  formData[imageFieldName + "_edited"] = true
-  imagePreview.value[imageFieldName] = null
-  formData[imageFieldName] = null
+const removeImage = (imageFieldName, index = null) => {
+  if (index !== null && Array.isArray(imagePreview.value[imageFieldName])) {
+    // Eliminar una imagen específica de múltiples - guardar para eliminar en backend
+    const imageToDelete = imagePreview.value[imageFieldName][index]
+    if (!imagesToDelete.value[imageFieldName]) {
+      imagesToDelete.value[imageFieldName] = []
+    }
+    imagesToDelete.value[imageFieldName].push(imageToDelete)
+
+    imagePreview.value[imageFieldName].splice(index, 1)
+    if (imagePreview.value[imageFieldName].length === 0) {
+      imagePreview.value[imageFieldName] = null
+    }
+
+    // Forzar dirty asignando al campo principal y transform
+    formData[imageFieldName] = "__DELETE_MARKER__"
+    formData[imageFieldName + "_delete"] = [
+      ...imagesToDelete.value[imageFieldName],
+    ]
+    formData.transform((data) => ({
+      ...data,
+      [imageFieldName]: null,
+      [imageFieldName + "_delete"]: imagesToDelete.value[imageFieldName],
+      [imageFieldName + "_edited"]: true,
+    }))
+  } else {
+    // Imagen única
+    formData.transform((data) => ({
+      ...data,
+      [imageFieldName + "_edited"]: true,
+    }))
+    formData[imageFieldName + "_edited"] = true
+    imagePreview.value[imageFieldName] = null
+    formData[imageFieldName] = null
+  }
 
   nextTick(() => {
     formRef.value?.validate()
@@ -521,18 +628,52 @@ watch(isFormDirty, (value) => {
             ></v-text-field>
 
             <div v-if="field.type === 'image'">
+              <!-- Input para imagen única -->
               <v-file-input
-                v-if="!imagePreview[field.field]"
+                v-if="!field.multiple && !imagePreview[field.field]"
                 :label="field.rules?.required ? field.name + ' *' : field.name"
                 v-model="formData[field.field]"
                 :rules="getFieldRules(formData[field.field], field)"
-                @change="(file) => handleImageUpload(file, field.field)"
+                @change="(file) => handleImageUpload(file, field.field, false)"
                 accept="image/*"
                 prepend-icon="mdi-file-image"
               ></v-file-input>
 
+              <!-- Input para múltiples imágenes (sin v-model para evitar bug) -->
+              <v-file-input
+                v-if="field.multiple"
+                :key="`image-${field.field}-${imageInputKey}`"
+                :label="field.rules?.required ? field.name + ' *' : field.name"
+                :rules="
+                  getFieldRules(
+                    formData[field.field] === '__DELETE_MARKER__'
+                      ? null
+                      : formData[field.field],
+                    field,
+                    imagePreview[field.field]?.length
+                      ? 'skipRequired'
+                      : undefined,
+                  )
+                "
+                @change="(file) => handleImageUpload(file, field.field, true)"
+                @click:clear="() => clearImageInput(field.field)"
+                accept="image/*"
+                prepend-icon="mdi-file-image"
+                multiple
+                :chips="true"
+                :hint="
+                  imagePreview[field.field]?.length
+                    ? `${
+                        imagePreview[field.field].length
+                      } imagen(es) guardada(s)`
+                    : ''
+                "
+                persistent-hint
+              ></v-file-input>
+
+              <!-- Preview imagen única -->
               <v-row
-                v-else
+                v-if="!field.multiple && imagePreview[field.field]"
                 class="align-center justify-center my-3 mx-1 elevation-6 rounded pa-2"
               >
                 <v-col cols="12" md="1" class="text-center">
@@ -558,6 +699,41 @@ watch(isFormDirty, (value) => {
                   </v-btn>
                 </v-col>
               </v-row>
+
+              <!-- Preview múltiples imágenes existentes -->
+              <div
+                v-if="
+                  field.multiple &&
+                  Array.isArray(imagePreview[field.field]) &&
+                  imagePreview[field.field].length > 0
+                "
+              >
+                <v-row
+                  v-for="(imagePath, index) in imagePreview[field.field]"
+                  :key="index"
+                  class="align-center justify-center my-2 mx-1 elevation-3 rounded pa-2"
+                >
+                  <v-col cols="12" md="10" class="d-flex justify-center">
+                    <v-img
+                      :src="`/laravel-auto-crud/${imagePath}`"
+                      max-width="150"
+                      max-height="150"
+                      contain
+                    ></v-img>
+                  </v-col>
+
+                  <v-col cols="12" md="2" class="text-center">
+                    <v-btn
+                      icon
+                      size="small"
+                      @click="removeImage(field.field, index)"
+                      color="red"
+                    >
+                      <v-icon>mdi-delete</v-icon>
+                    </v-btn>
+                  </v-col>
+                </v-row>
+              </div>
             </div>
 
             <div v-if="field.type === 'file'">

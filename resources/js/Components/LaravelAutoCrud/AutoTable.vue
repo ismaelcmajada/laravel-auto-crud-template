@@ -329,6 +329,14 @@ const onCustomFieldsUpdated = () => {
   loadItems()
 }
 
+// Image carousel index per item (keyed by `${itemId}_${headerKey}`)
+const imageCarouselIndex = ref({})
+
+const getClampedIndex = (key, arrayLength) => {
+  const idx = imageCarouselIndex.value[key] || 0
+  return Math.min(idx, Math.max(arrayLength - 1, 0))
+}
+
 // Image dialog
 const showImageDialog = ref(false)
 const currentImageUrl = ref("")
@@ -393,6 +401,20 @@ watch(item, (value) => {
       :model="dynamicModel"
       @formChange="emit('formChange', $event)"
     >
+      <template
+        #header-actions="{
+          item: dialogItem,
+          type: dialogType,
+          model: dialogModel,
+        }"
+      >
+        <slot
+          name="auto-form-dialog.header-actions"
+          :item="dialogItem"
+          :type="dialogType"
+          :model="dialogModel"
+        ></slot>
+      </template>
       <template #prepend>
         <slot
           name="auto-form-dialog.prepend"
@@ -718,18 +740,101 @@ watch(item, (value) => {
               <template
                 v-else-if="header.type === 'image' && listItem[header.key]"
               >
-                <v-avatar size="40">
-                  <v-img
-                    :src="`/laravel-auto-crud/${listItem[header.key]}`"
-                    @click.stop="
-                      openImageDialog(
-                        `/laravel-auto-crud/${listItem[header.key]}`,
-                        listItem[header.key],
-                      )
-                    "
-                    class="cursor-pointer"
-                  ></v-img>
-                </v-avatar>
+                <!-- Múltiples imágenes (JSON array) -->
+                <template v-if="isJsonArray(listItem[header.key])">
+                  <div class="d-flex align-center justify-center">
+                    <v-btn
+                      v-if="parseJsonArray(listItem[header.key]).length > 1"
+                      icon
+                      size="x-small"
+                      variant="text"
+                      @click.stop="
+                        imageCarouselIndex[`${listItem.id}_${header.key}`] =
+                          getClampedIndex(
+                            `${listItem.id}_${header.key}`,
+                            parseJsonArray(listItem[header.key]).length,
+                          ) - 1
+                      "
+                      :disabled="
+                        getClampedIndex(
+                          `${listItem.id}_${header.key}`,
+                          parseJsonArray(listItem[header.key]).length,
+                        ) <= 0
+                      "
+                    >
+                      <v-icon size="small">mdi-chevron-left</v-icon>
+                    </v-btn>
+                    <v-avatar size="50" class="mx-1 rounded">
+                      <v-img
+                        :src="`/laravel-auto-crud/${
+                          parseJsonArray(listItem[header.key])[
+                            getClampedIndex(
+                              `${listItem.id}_${header.key}`,
+                              parseJsonArray(listItem[header.key]).length,
+                            )
+                          ]
+                        }`"
+                        cover
+                        @click.stop="
+                          openImageDialog(
+                            `/laravel-auto-crud/${
+                              parseJsonArray(listItem[header.key])[
+                                getClampedIndex(
+                                  `${listItem.id}_${header.key}`,
+                                  parseJsonArray(listItem[header.key]).length,
+                                )
+                              ]
+                            }`,
+                            parseJsonArray(listItem[header.key])[
+                              getClampedIndex(
+                                `${listItem.id}_${header.key}`,
+                                parseJsonArray(listItem[header.key]).length,
+                              )
+                            ],
+                          )
+                        "
+                        class="cursor-pointer"
+                      ></v-img>
+                    </v-avatar>
+                    <v-btn
+                      v-if="parseJsonArray(listItem[header.key]).length > 1"
+                      icon
+                      size="x-small"
+                      variant="text"
+                      @click.stop="
+                        imageCarouselIndex[`${listItem.id}_${header.key}`] =
+                          getClampedIndex(
+                            `${listItem.id}_${header.key}`,
+                            parseJsonArray(listItem[header.key]).length,
+                          ) + 1
+                      "
+                      :disabled="
+                        getClampedIndex(
+                          `${listItem.id}_${header.key}`,
+                          parseJsonArray(listItem[header.key]).length,
+                        ) >=
+                        parseJsonArray(listItem[header.key]).length - 1
+                      "
+                    >
+                      <v-icon size="small">mdi-chevron-right</v-icon>
+                    </v-btn>
+                  </div>
+                </template>
+                <!-- Imagen única -->
+                <template v-else>
+                  <v-avatar size="40">
+                    <v-img
+                      :src="`/laravel-auto-crud/${listItem[header.key]}`"
+                      @click.stop="
+                        openImageDialog(
+                          `/laravel-auto-crud/${listItem[header.key]}`,
+                          listItem[header.key],
+                        )
+                      "
+                      class="cursor-pointer"
+                    ></v-img>
+                  </v-avatar>
+                </template>
               </template>
               <!-- Si el header tiene type file -->
               <template
@@ -1047,20 +1152,104 @@ watch(item, (value) => {
             </template>
 
             <!-- Si el header tiene type image -->
-            <template v-else-if="header.type === 'image'">
-              <v-img
-                :src="`/laravel-auto-crud/${item[header.key]}`"
-                max-width="150"
-                max-height="150"
-                class="mx-auto cursor-pointer"
-                @click="
-                  openImageDialog(
-                    `/laravel-auto-crud/${item[header.key]}`,
-                    item[header.key],
-                  )
-                "
-                :title="'Click para ampliar'"
-              ></v-img>
+            <template v-else-if="header.type === 'image' && item[header.key]">
+              <!-- Múltiples imágenes (JSON array) -->
+              <template v-if="isJsonArray(item[header.key])">
+                <div class="d-flex align-center justify-center">
+                  <v-btn
+                    v-if="parseJsonArray(item[header.key]).length > 1"
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click.stop="
+                      imageCarouselIndex[`${item.id}_${header.key}`] =
+                        getClampedIndex(
+                          `${item.id}_${header.key}`,
+                          parseJsonArray(item[header.key]).length,
+                        ) - 1
+                    "
+                    :disabled="
+                      getClampedIndex(
+                        `${item.id}_${header.key}`,
+                        parseJsonArray(item[header.key]).length,
+                      ) <= 0
+                    "
+                  >
+                    <v-icon size="small">mdi-chevron-left</v-icon>
+                  </v-btn>
+                  <v-avatar size="60" class="mx-1 rounded">
+                    <v-img
+                      :src="`/laravel-auto-crud/${
+                        parseJsonArray(item[header.key])[
+                          getClampedIndex(
+                            `${item.id}_${header.key}`,
+                            parseJsonArray(item[header.key]).length,
+                          )
+                        ]
+                      }`"
+                      cover
+                      @click.stop="
+                        openImageDialog(
+                          `/laravel-auto-crud/${
+                            parseJsonArray(item[header.key])[
+                              getClampedIndex(
+                                `${item.id}_${header.key}`,
+                                parseJsonArray(item[header.key]).length,
+                              )
+                            ]
+                          }`,
+                          parseJsonArray(item[header.key])[
+                            getClampedIndex(
+                              `${item.id}_${header.key}`,
+                              parseJsonArray(item[header.key]).length,
+                            )
+                          ],
+                        )
+                      "
+                      class="cursor-pointer"
+                      :title="'Click para ampliar'"
+                    ></v-img>
+                  </v-avatar>
+                  <v-btn
+                    v-if="parseJsonArray(item[header.key]).length > 1"
+                    icon
+                    size="x-small"
+                    variant="text"
+                    @click.stop="
+                      imageCarouselIndex[`${item.id}_${header.key}`] =
+                        getClampedIndex(
+                          `${item.id}_${header.key}`,
+                          parseJsonArray(item[header.key]).length,
+                        ) + 1
+                    "
+                    :disabled="
+                      getClampedIndex(
+                        `${item.id}_${header.key}`,
+                        parseJsonArray(item[header.key]).length,
+                      ) >=
+                      parseJsonArray(item[header.key]).length - 1
+                    "
+                  >
+                    <v-icon size="small">mdi-chevron-right</v-icon>
+                  </v-btn>
+                </div>
+              </template>
+              <!-- Imagen única -->
+              <template v-else>
+                <v-img
+                  :src="`/laravel-auto-crud/${item[header.key]}`"
+                  max-width="150"
+                  max-height="150"
+                  class="mx-auto cursor-pointer"
+                  @click="
+                    openImageDialog(
+                      `/laravel-auto-crud/${item[header.key]}`,
+                      item[header.key],
+                    )
+                  "
+                  :title="'Click para ampliar'"
+                ></v-img>
+              </template>
             </template>
 
             <!-- Si el header tiene type file -->
