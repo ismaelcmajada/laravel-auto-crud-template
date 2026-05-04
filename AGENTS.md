@@ -88,8 +88,8 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
 - php - 8.4
-- inertiajs/inertia-laravel (INERTIA_LARAVEL) - v2
-- laravel/framework (LARAVEL) - v12
+- inertiajs/inertia-laravel (INERTIA_LARAVEL) - v3
+- laravel/framework (LARAVEL) - v13
 - laravel/prompts (PROMPTS) - v0
 - laravel/sanctum (SANCTUM) - v4
 - tightenco/ziggy (ZIGGY) - v1
@@ -97,9 +97,9 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - laravel/mcp (MCP) - v0
 - laravel/pint (PINT) - v1
 - laravel/sail (SAIL) - v1
-- pestphp/pest (PEST) - v3
-- phpunit/phpunit (PHPUNIT) - v11
-- @inertiajs/vue3 (INERTIA_VUE) - v1
+- pestphp/pest (PEST) - v4
+- phpunit/phpunit (PHPUNIT) - v12
+- @inertiajs/vue3 (INERTIA_VUE) - v3
 - tailwindcss (TAILWINDCSS) - v3
 - vue (VUE) - v3
 
@@ -206,11 +206,19 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - ALWAYS use `search-docs` tool for version-specific Inertia documentation and updated code examples.
 - IMPORTANT: Activate `inertia-vue-development` when working with Inertia Vue client-side patterns.
 
-# Inertia v2
+# Inertia v3
 
-- Use all Inertia features from v1 and v2. Check the documentation before making changes to ensure the correct approach.
-- New features: deferred props, infinite scroll, merging props, polling, prefetching, once props, flash data.
+- Use all Inertia features from v1, v2, and v3. Check the documentation before making changes to ensure the correct approach.
+- New v3 features: standalone HTTP requests (`useHttp` hook), optimistic updates with automatic rollback, layout props (`useLayoutProps` hook), instant visits, simplified SSR via `@inertiajs/vite` plugin, custom exception handling for error pages.
+- Carried over from v2: deferred props, infinite scroll, merging props, polling, prefetching, once props, flash data.
 - When using deferred props, add an empty state with a pulsing or animated skeleton.
+- Axios has been removed. Use the built-in XHR client with interceptors, or install Axios separately if needed.
+- `Inertia::lazy()` / `LazyProp` has been removed. Use `Inertia::optional()` instead.
+- Prop types (`Inertia::optional()`, `Inertia::defer()`, `Inertia::merge()`) work inside nested arrays with dot-notation paths.
+- SSR works automatically in Vite dev mode with `@inertiajs/vite` - no separate Node.js server needed during development.
+- Event renames: `invalid` is now `httpException`, `exception` is now `networkError`.
+- `router.cancel()` replaced by `router.cancelAll()`.
+- The `future` configuration namespace has been removed - all v2 future options are now always enabled.
 
 === laravel/core rules ===
 
@@ -241,32 +249,6 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 ## Vite Error
 
 - If you receive an "Illuminate\Foundation\ViteException: Unable to locate file in Vite manifest" error, you can run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
-
-=== laravel/v12 rules ===
-
-# Laravel 12
-
-- CRITICAL: ALWAYS use `search-docs` tool for version-specific Laravel documentation and updated code examples.
-- This project upgraded from Laravel 10 without migrating to the new streamlined Laravel file structure.
-- This is perfectly fine and recommended by Laravel. Follow the existing structure from Laravel 10. We do not need to migrate to the new Laravel structure unless the user explicitly requests it.
-
-## Laravel 10 Structure
-
-- Middleware typically lives in `app/Http/Middleware/` and service providers in `app/Providers/`.
-- There is no `bootstrap/app.php` application configuration in a Laravel 10 structure:
-    - Middleware registration happens in `app/Http/Kernel.php`
-    - Exception handling is in `app/Exceptions/Handler.php`
-    - Console commands and schedule register in `app/Console/Kernel.php`
-    - Rate limits likely exist in `RouteServiceProvider` or `app/Http/Kernel.php`
-
-## Database
-
-- When modifying a column, the migration must include all of the attributes that were previously defined on the column. Otherwise, they will be dropped and lost.
-- Laravel 12 allows limiting eagerly loaded records natively, without external packages: `$query->latest()->limit(10);`.
-
-### Models
-
-- Casts can and likely should be set in a `casts()` method on a model rather than the `$casts` property. Follow existing conventions from other models.
 
 === pint/core rules ===
 
