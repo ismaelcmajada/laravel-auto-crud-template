@@ -33,7 +33,7 @@ Schema::create('products', function (Blueprint $table) {
     $table->string('name');
     $table->decimal('price', 10, 2);
     $table->string('status');
-    $table->foreignId('category_id')->constrained();
+    $table->string('category'); // combobox → always string, never foreignId
     $table->softDeletes();
     $table->timestamps();
 });
@@ -48,6 +48,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Product extends Model
 {
     use AutoCrud, SoftDeletes;
+
+    protected static $includes = [];
+    protected static $externalRelations = [];
+    protected static $forbiddenActions = [];
 
     protected static function getFields(): array
     {
@@ -78,18 +82,13 @@ class Product extends Model
             ],
             [
                 'name'      => 'Category',
-                'field'     => 'category_id',
+                'field'     => 'category',  // combobox stores the string value, NOT an FK
                 'type'      => 'combobox',
                 'endPoint'  => '/laravel-auto-crud/category',
                 'itemTitle' => 'name',
                 'table'     => true,
                 'form'      => true,
-                'relation'  => [
-                    'model'    => Category::class,
-                    'relation' => 'category',
-                    'tableKey' => '{name}',
-                    'formKey'  => '{name}',
-                ],
+                // ✅ NO 'relation' key — combobox NEVER has relation
             ],
         ];
     }
@@ -160,8 +159,8 @@ For deeper package docs see the `docs/` folder shipped with the package: `fields
 ## Decision checklist when adding a CRUD for X
 
 1. Migration with the columns / FKs / pivot tables / `softDeletes()`.
-2. `App\Models\X` with `use AutoCrud[, SoftDeletes];` and `getFields()`.
-3. FK fields → declare via `relation` key inside the field (no Eloquent method).
+2. `App\Models\X` with `use AutoCrud[, SoftDeletes];`, **always declare `protected static $includes = []`, `protected static $externalRelations = []`, `protected static $forbiddenActions = []`** (the trait accesses them directly — missing any of them breaks the model), then `getFields()`.
+3. `combobox` fields → `string` column in migration, `endPoint` + `itemTitle` in field, **NO `relation` key ever**. The `relation` key is only for `belongsTo` / `morphTo` FK fields (non-combobox types).
 4. Many-to-many / hasMany → `protected static $externalRelations = [...]`.
 5. Cross-field validation → `getCustomRules()` + `'rules' => ['custom' => ['...']]`.
 6. Side effects → lifecycle hooks (`creatingEvent`, `updatedEvent`, …).

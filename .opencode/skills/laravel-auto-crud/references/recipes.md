@@ -9,7 +9,21 @@ Concrete step-by-step procedures. Pick the recipe that matches the user's reques
 When the user asks for "a CRUD for X":
 
 1. Create the migration with the columns matching every `field`, plus FKs, plus pivot tables, plus `softDeletes()` if soft-delete is needed.
-2. Create `App\Models\X` with `use AutoCrud[, SoftDeletes];` and implement `protected static function getFields(): array`.
+2. Create `App\Models\X` with `use AutoCrud[, SoftDeletes];`, declare the **three required static properties**, and implement `protected static function getFields(): array`:
+
+```php
+class X extends Model
+{
+    use AutoCrud; // add SoftDeletes if needed
+
+    protected static $includes          = []; // REQUIRED — trait accesses this directly
+    protected static $externalRelations = []; // REQUIRED
+    protected static $forbiddenActions  = []; // REQUIRED
+
+    protected static function getFields(): array { ... }
+}
+```
+
 3. For each FK, add the field's `relation` key (see [relations.md](relations.md)). **Do not** add Eloquent relationship methods.
 4. For hasMany / belongsToMany, add `protected static $externalRelations = [...]`.
 5. Confirm `'models' => app('models')` is shared in `HandleInertiaRequests::share()` (one-time project setup).

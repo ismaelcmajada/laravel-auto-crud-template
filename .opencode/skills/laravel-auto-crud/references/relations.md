@@ -11,10 +11,8 @@ Declare inside the FK field's `relation` key.
 ```php
 [
     'name'      => 'User',
-    'field'     => 'user_id',
-    'type'      => 'combobox',
-    'endPoint'  => '/laravel-auto-crud/user',
-    'itemTitle' => 'name',
+    'field'     => 'user_id',   // FK column — integer
+    'type'      => 'number',    // NOT combobox — combobox is for string autocomplete only
     'table'     => true,
     'form'      => true,
     'relation'  => [
@@ -25,6 +23,8 @@ Declare inside the FK field's `relation` key.
     ],
 ],
 ```
+
+> **Combobox vs BelongsTo**: `combobox` stores the **selected string value** directly in the column and **NEVER** has a `relation` key. `belongsTo` FK fields store an integer ID and **always** use `type: 'number'` (or another non-combobox type) together with the `relation` key.
 
 - `tableKey` / `formKey` are template strings; `{field}` is replaced with the related model's column.
 - If the related model uses `SoftDeletes`, `withTrashed()` is applied automatically.
@@ -95,6 +95,11 @@ protected static $externalRelations = [
 ```php
 // ❌ Writing the Eloquent method when the field already declares `relation`
 public function user() { return $this->belongsTo(User::class); }
+```
+
+```php
+// ❌ Using combobox type for a FK/belongsTo field
+['type' => 'combobox', 'relation' => [...]] // combobox NEVER has relation
 ```
 
 ```php

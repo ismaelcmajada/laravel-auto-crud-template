@@ -10,20 +10,20 @@ Every entry in `getFields()` is an associative array.
 
 ## Common optional keys
 
-| Key          | Purpose                                                                                    |
-| ------------ | ------------------------------------------------------------------------------------------ |
-| `table`      | `true` to show in `<auto-table>`.                                                          |
-| `form`       | `true` to show in `<auto-form>` / `<auto-form-dialog>`.                                    |
-| `rules`      | Validation rules (see below).                                                              |
-| `default`    | Default value on create.                                                                   |
-| `onlyUpdate` | Field only appears in update form.                                                         |
-| `hidden`     | Hide from API payload (e.g. passwords).                                                    |
-| `options`    | For `select` — **flat array of strings only**.                                             |
-| `endPoint`   | For `combobox` — autocomplete endpoint (typically another model's `model.endPoint`).       |
-| `itemTitle`  | For `combobox` — field of the related model to display.                                    |
-| `comboField` | For `combobox` with multi-key display.                                                     |
-| `relation`   | Inline `belongsTo` / `morphTo` declaration (see [relations.md](relations.md)).             |
-| `public`     | For `image` / `file` — `true` (default) for public storage, `false` for encrypted private. |
+| Key          | Purpose                                                                                                                     |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `table`      | `true` to show in `<auto-table>`.                                                                                           |
+| `form`       | `true` to show in `<auto-form>` / `<auto-form-dialog>`.                                                                     |
+| `rules`      | Validation rules (see below).                                                                                               |
+| `default`    | Default value on create.                                                                                                    |
+| `onlyUpdate` | Field only appears in update form.                                                                                          |
+| `hidden`     | Hide from API payload (e.g. passwords).                                                                                     |
+| `options`    | For `select` — **flat array of strings only**.                                                                              |
+| `endPoint`   | For `combobox` — autocomplete endpoint (typically another model's `model.endPoint`).                                        |
+| `itemTitle`  | For `combobox` — field of the related model to display as the stored string value.                                          |
+| `comboField` | For `combobox` with multi-key display.                                                                                      |
+| `relation`   | Inline `belongsTo` / `morphTo` declaration — **only for FK fields, NEVER for combobox** (see [relations.md](relations.md)). |
+| `public`     | For `image` / `file` — `true` (default) for public storage, `false` for encrypted private.                                  |
 
 ## Types
 

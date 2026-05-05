@@ -33,22 +33,61 @@ class StoreProductRequest extends FormRequest { ... }
 ## Relationships
 
 ```php
-// ❌ Bad — duplicates the field's `relation` declaration
+// ❌ Bad — duplicates what the field's `relation` declaration already handles
 public function user() {
     return $this->belongsTo(User::class);
 }
 ```
 
 ```php
-// ✅ Good — declare it inside getFields()
+// ✅ Good — declare the relation key inside getFields() on the FK field
 [
-    'name' => 'User', 'field' => 'user_id', 'type' => 'combobox',
-    'endPoint' => '/laravel-auto-crud/user', 'itemTitle' => 'name',
+    'name'     => 'User',
+    'field'    => 'user_id',   // FK integer column
+    'type'     => 'number',    // NOT combobox — combobox never carries a relation
+    'table'    => true,
+    'form'     => true,
     'relation' => [
-        'model' => User::class, 'relation' => 'user',
-        'tableKey' => '{name}', 'formKey' => '{name}',
+        'model'    => User::class,
+        'relation' => 'user',
+        'tableKey' => '{name}',
+        'formKey'  => '{name}',
     ],
 ],
+```
+
+## Combobox with `relation`
+
+A `combobox` is a **string-autocomplete** field. It stores the selected text directly in the column — it is not a FK selector and it never carries a `relation` key. The migration column must be `string`.
+
+```php
+// ❌ Bad — combobox NEVER has a relation key
+[
+    'name'      => 'Category',
+    'field'     => 'category_id',   // ❌ also wrong — combobox field is not a FK
+    'type'      => 'combobox',
+    'endPoint'  => '/laravel-auto-crud/category',
+    'itemTitle' => 'name',
+    'relation'  => ['model' => Category::class, 'relation' => 'category', ...],
+],
+// And in the migration:
+$table->foreignId('category_id')->constrained(); // ❌ wrong
+```
+
+```php
+// ✅ Good — combobox stores a plain string; no relation, no FK
+[
+    'name'      => 'Category',
+    'field'     => 'category',   // plain string column
+    'type'      => 'combobox',
+    'endPoint'  => '/laravel-auto-crud/category',
+    'itemTitle' => 'name',
+    'table'     => true,
+    'form'      => true,
+    // no 'relation' key
+],
+// And in the migration:
+$table->string('category'); // ✅ always string for combobox
 ```
 
 ## Soft deletes / pivots
@@ -78,6 +117,34 @@ protected $casts    = ['active' => 'boolean', 'created_at' => 'datetime'];
 
 ```php
 // ✅ Good — let the trait fill these from the field types.
+```
+
+## Missing required static properties
+
+The `AutoCrud` trait accesses `static::$includes`, `static::$externalRelations`, `static::$forbiddenActions` and `static::$calendarFields` directly. If any of these are missing from the model, the application will throw an error.
+
+```php
+// ❌ Bad — missing required static declarations
+class Product extends Model
+{
+    use AutoCrud, SoftDeletes;
+
+    protected static function getFields(): array { ... }
+}
+```
+
+```php
+// ✅ Good — always declare all required static properties
+class Product extends Model
+{
+    use AutoCrud, SoftDeletes;
+
+    protected static $includes          = [];
+    protected static $externalRelations = [];
+    protected static $forbiddenActions  = [];
+
+    protected static function getFields(): array { ... }
+}
 ```
 
 ## Select options
