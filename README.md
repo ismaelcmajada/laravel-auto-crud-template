@@ -47,7 +47,7 @@ Hecha para usar con el paquete [`ismaelcmajada/laravel-auto-crud`](https://githu
 git clone <repo-url>
 cd laravel-auto-crud-template
 composer install
-npm install
+pnpm install
 ```
 
 ### 2. Configurar entorno
@@ -82,7 +82,7 @@ php artisan migrate
 php artisan serve
 
 # Frontend (en otra terminal)
-npm run dev
+pnpm run dev
 ```
 
 Abre `http://localhost:8000` en tu navegador.
@@ -307,8 +307,8 @@ Las reglas de validación en español están en `resources/js/Utils/LaravelAutoC
 php artisan serve
 
 # Compilar frontend
-npm run dev     # desarrollo
-npm run build   # producción
+pnpm run dev     # desarrollo
+pnpm run build   # producción
 
 # Migraciones
 php artisan migrate
