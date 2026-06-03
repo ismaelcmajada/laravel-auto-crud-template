@@ -1,30 +1,31 @@
 {
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@10.11.0",
+  "packageManager": "pnpm@11.3.0",
   "scripts": {
     "dev": "vite",
     "build": "vite build"
   },
   "devDependencies": {
-    "@inertiajs/vue3": "^3.0.3",
-    "@mdi/font": "^7.2.96",
-    "@vitejs/plugin-vue": "^6.0.6",
-    "autoprefixer": "^10.4.19",
-    "axios": "^1.5.1",
+    "@inertiajs/vue3": "^3.3.0",
+    "@mdi/font": "^7.4.47",
+    "@vitejs/plugin-vue": "^6.0.7",
+    "autoprefixer": "^10.5.0",
+    "axios": "^1.16.1",
     "laravel-vite-plugin": "^3.1.0",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4",
-    "vite": "^8.0.0",
-    "vue": "^3.3.4"
+    "postcss": "^8.5.15",
+    "tailwindcss": "^3.4.19",
+    "vite": "^8.0.16",
+    "vue": "^3.5.35"
   },
   "dependencies": {
+    "date-fns": "^4.4.0",
     "date-fns-tz": "^3.2.0",
     "lodash.debounce": "^4.0.8",
-    "vite-plugin-vuetify": "^2.0.3",
-    "vue-cal": "^4.10.0",
-    "vue-toastification": "^2.0.0-rc.5",
-    "vuetify": "^3.4.9",
+    "vite-plugin-vuetify": "^2.1.3",
+    "vue-cal": "^4.10.2",
+    "vue-toastification": "2.0.0-rc.5",
+    "vuetify": "^4.0.7",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.0/xlsx-0.20.0.tgz"
   }
 }

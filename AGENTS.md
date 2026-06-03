@@ -1,82 +1,3 @@
-# Agent Guidance
-
-## Project stack
-
-- **Backend:** Laravel 12
-- **Frontend:** Inertia.js (Vue 3) + Vuetify 3
-- **CRUD:** `ismaelcmajada/laravel-auto-crud` (autogenerates routes, controllers, validation, tables, forms, etc.)
-- **Language:** UI is in Spanish
-- **Package manager:** Always use `pnpm` for frontend dependencies and scripts. Do not use `npm`, `yarn`, or `package-lock.json`.
-
-## Global architecture (already set up — do not repeat)
-
-1. **`app/Providers/NavigationServiceProvider.php`**
-   - Exposes `app('navigation')` as a singleton.
-   - Navigation entries are declared as an array of arrays with keys: `name`, `icon`, `model` (optional), `path` (optional), `dividers` (optional), `childs` (optional).
-   - When `model` is provided, the path is auto-generated as `/dashboard/{modelName}` (e.g. `App\Models\User` → `/dashboard/user`).
-   - Navigation is filtered by role using `$modelClass::getForbiddenActions()`; if `index` is forbidden for the user's role, the item is hidden.
-   - **To add a new nav item:** register the model class under the `model` key. Do **not** hardcode paths for AutoCrud models.
-
-2. **`app/Http/Middleware/HandleInertiaRequests.php`**
-   - Already shares `models` (auto-discovered AutoCrud models) and `navigation` with every Inertia response.
-   - Do **not** modify this file to add new models; simply placing a model under `app/Models/**` with the `AutoCrud` trait is enough.
-
-## Adding a new CRUD
-
-Follow the golden path from the `laravel-auto-crud` skill docs. Project-specific conventions:
-
-1. **Migration** → create the table (add `softDeletes()` when needed).
-2. **Model** → `app/Models/<Model>.php` using `AutoCrud` trait + `getFields()`.
-3. **Navigation** → add the model to `NavigationServiceProvider::generateNavigation()` with `'model' => Model::class`.
-4. **Route** → no manual route needed; the existing catch-all already handles it:
-   ```php
-   Route::get('/{model}', [AutoCrudController::class, 'index'])->name('laravel-auto-crud.model.index');
-   ```
-   If you need a named route for redirects, reuse `route('laravel-auto-crud.model.index', ['model' => 'user'])`.
-5. **Vue page** → create `resources/js/Pages/Dashboard/<Model>.vue` (PascalCase filename) and import `AutoTable`:
-   ```vue
-   <script setup>
-   import AutoTable from "@/Components/LaravelAutoCrud/AutoTable.vue"
-   import { usePage } from "@inertiajs/vue3"
-   const model = usePage().props.models.user
-   </script>
-   <template>
-     <auto-table title="Usuarios" :model="model" />
-   </template>
-   ```
-
-   - Use Spanish for the `title` prop.
-   - The `models` key is the snake_case / lowercase model name (e.g. `user`, `product_category`).
-
-## Rules that apply on top of the skill docs
-
-- **Never create controllers, FormRequests or resource routes** for AutoCrud models. The `AutoCrudController::index` route is already registered.
-- **Never edit published package files** under `resources/js/Components/LaravelAutoCrud/`, `resources/js/Composables/LaravelAutoCrud/`, `resources/js/Utils/LaravelAutoCrud/`, or `config/laravel-auto-crud.php`. Customise via props, slots or wrapper components.
-- **UI text must be in Spanish** (`title`, `nav names`, labels when overriding slots, etc.).
-- **`select` field `options` must be a flat array of strings** (e.g. `['activo', 'inactivo']`). Associative arrays or object arrays are not supported.
-- **Foreign keys** are declared inside `getFields()` via the `relation` key; do not manually write Eloquent relationship methods just for CRUD metadata.
-- **Many-to-many / hasMany** relations go in `protected static $externalRelations = [...]` on the model.
-- **Role-based access** is driven by `$forbiddenActions` on the model (array keyed by role). The navigation provider already respects it.
-
-## File locations
-
-| Concern                              | Location                                        |
-| ------------------------------------ | ----------------------------------------------- |
-| Migrations                           | `database/migrations/`                          |
-| Models                               | `app/Models/`                                   |
-| Navigation config                    | `app/Providers/NavigationServiceProvider.php`   |
-| Inertia middleware                   | `app/Http/Middleware/HandleInertiaRequests.php` |
-| Web routes (auth + dashboard prefix) | `routes/web.php`                                |
-| Vue pages                            | `resources/js/Pages/Dashboard/`                 |
-| Auth routes                          | `routes/auth.php`                               |
-
-## When in doubt
-
-- Consult the `laravel-auto-crud` skill for recipes (relations, custom validation, files/images, calendar, hooks, search scopes, forbidden actions, etc.).
-- Keep changes minimal: migration → model with `getFields()` → navigation entry → Vue page with `<auto-table>`.
-
-===
-
 <laravel-boost-guidelines>
 === foundation rules ===
 
@@ -166,7 +87,6 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run Artisan commands directly via the command line (e.g., `php artisan route:list`). Use `php artisan list` to discover available commands and `php artisan [command] --help` to check parameters.
 - Inspect routes with `php artisan route:list`. Filter with: `--method=GET`, `--name=users`, `--path=api`, `--except-vendor`, `--only-vendor`.
 - Read configuration values using dot notation: `php artisan config:show app.name`, `php artisan config:show database.default`. Or read config files directly from the `config/` directory.
-- To check environment variables, read the `.env` file directly.
 
 ## Tinker
 
@@ -272,6 +192,525 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 # Inertia + Vue
 
 Vue components must have a single root element.
+
 - IMPORTANT: Activate `inertia-vue-development` when working with Inertia Vue client-side patterns.
 
 </laravel-boost-guidelines>
+
+<!-- LARAVEL_AUTO_CRUD_AI_CONTEXT_START -->
+# Laravel Auto Crud AI Context
+
+> Automatically generated by `php artisan ai:context`. Edit other parts of `AGENTS.md`; this block is replaced when regenerated.
+
+## Agent Instructions
+
+- Before making Laravel AutoCrud, CRUD, model, migration, route, Inertia or Vue page changes, load and follow the `laravel-auto-crud` skill.
+- Prefer AutoCrud model metadata over manual CRUD controllers, FormRequests, resource routes or duplicated frontend logic.
+- After making changes that affect models, database schema, routes, Inertia pages or Vue components, run `php artisan ai:context` and keep this section updated.
+- Treat this generated context as the current project map for AI-assisted work.
+
+Generated: 2026-06-03 00:16:29
+
+## Models
+
+### AutoCrud Models
+
+#### Record
+
+Class: `App\Models\Record`
+Table: `records`
+
+Fillable:
+- user_id
+- model
+- action
+Casts:
+- id: int
+- user_id: integer
+- element_id: integer
+AutoCrud Fields:
+- user_id (number): Usuario
+- element_id (number): Elemento
+- model (string): Modelo
+- action (string): Acción
+Relations:
+- user (belongsTo) -> `App\Models\User` via `user_id`
+- recordable (morphTo) via `element_id`
+
+#### User
+
+Class: `App\Models\User`
+Table: `users`
+
+Fillable:
+- name
+- email
+- password
+- role
+Casts:
+- id: int
+- deleted_at: datetime
+- password: string
+AutoCrud Fields:
+- name (string): Nombre
+- email (email): Email
+- password (password): Contraseña
+- role (select): Rol
+Relations:
+- None detected
+
+### Regular Models
+
+No models in this group.
+
+## Database
+
+### custom_field_definitions
+
+| Field | Type | Nullable |
+| --- | --- | --- |
+| id | bigint | no |
+| model_type | varchar | no |
+| name | varchar | no |
+| label | varchar | no |
+| type | varchar | no |
+| options | json | yes |
+| rules | json | yes |
+| order | int | no |
+| is_active | tinyint | no |
+| show_in_table | tinyint | no |
+| created_at | timestamp | yes |
+| updated_at | timestamp | yes |
+
+FK:
+- None
+
+### custom_field_values
+
+| Field | Type | Nullable |
+| --- | --- | --- |
+| id | bigint | no |
+| custom_field_definition_id | bigint | no |
+| model_type | varchar | no |
+| model_id | bigint | no |
+| value | text | yes |
+| created_at | timestamp | yes |
+| updated_at | timestamp | yes |
+
+FK:
+- custom_field_definition_id -> custom_field_definitions.id
+
+### failed_jobs
+
+| Field | Type | Nullable |
+| --- | --- | --- |
+| id | bigint | no |
+| uuid | varchar | no |
+| connection | text | no |
+| queue | text | no |
+| payload | longtext | no |
+| exception | longtext | no |
+| failed_at | timestamp | no |
+
+FK:
+- None
+
+### migrations
+
+| Field | Type | Nullable |
+| --- | --- | --- |
+| id | int | no |
+| migration | varchar | no |
+| batch | int | no |
+
+FK:
+- None
+
+### password_reset_tokens
+
+| Field | Type | Nullable |
+| --- | --- | --- |
+| email | varchar | no |
+| token | varchar | no |
+| created_at | timestamp | yes |
+
+FK:
+- None
+
+### personal_access_tokens
+
+| Field | Type | Nullable |
+| --- | --- | --- |
+| id | bigint | no |
+| tokenable_type | varchar | no |
+| tokenable_id | bigint | no |
+| name | varchar | no |
+| token | varchar | no |
+| abilities | text | yes |
+| last_used_at | timestamp | yes |
+| expires_at | timestamp | yes |
+| created_at | timestamp | yes |
+| updated_at | timestamp | yes |
+
+FK:
+- None
+
+### records
+
+| Field | Type | Nullable |
+| --- | --- | --- |
+| id | bigint | no |
+| user_id | int | no |
+| element_id | int | no |
+| model | varchar | no |
+| action | varchar | no |
+| created_at | timestamp | yes |
+| updated_at | timestamp | yes |
+
+FK:
+- None
+
+### users
+
+| Field | Type | Nullable |
+| --- | --- | --- |
+| id | bigint | no |
+| name | varchar | no |
+| email | varchar | no |
+| password | varchar | no |
+| role | varchar | no |
+| remember_token | varchar | yes |
+| created_at | timestamp | yes |
+| updated_at | timestamp | yes |
+| deleted_at | timestamp | yes |
+
+FK:
+- None
+
+## Inertia Pages
+
+### Dashboard/CalendarExpample
+
+Route: `GET /dashboard/calendar-example`
+Controller: `Closure`
+Props:
+- None
+
+### Dashboard/
+
+Route: `GET /dashboard/{model}`
+Controller: `Ismaelcmajada\LaravelAutoCrud\Http\Controllers\AutoCrudController@index`
+Props:
+- None
+
+### Auth/Login
+
+Route: `GET /login`
+Controller: `App\Http\Controllers\Auth\AuthenticatedSessionController@create`
+Props:
+- status
+
+## Vue Pages
+
+### Pages/Auth/Login.vue
+
+Props:
+- status
+Events:
+- None
+Uses:
+- Head
+
+### Pages/Dashboard/User.vue
+
+Props:
+- None
+Events:
+- None
+Uses:
+- AutoTable
+
+## Vue Components
+
+### Components/LaravelAutoCrud/AutoCalendar.vue
+
+Props:
+- model
+Events:
+- None
+Uses:
+- VueCal
+- AutoFormDialog
+
+### Components/LaravelAutoCrud/AutoExternalRelation.vue
+
+Props:
+- item
+- endPoint
+- externalRelation
+- withTitle
+- customFilters
+- filteredItems
+- customItemProps
+- formData
+- noFilterItems
+Events:
+- bound
+- unbound
+- childCreated
+- childUpdated
+- childDeleted
+Uses:
+- AutocompleteServer
+- AutoFormDialog
+- AutoTable
+
+### Components/LaravelAutoCrud/AutoForm.vue
+
+Props:
+- item
+- type
+- model
+- customFilters
+- filteredItems
+- customItemProps
+Events:
+- update:item
+- update:type
+- formChange
+- isDirty
+- success
+- close
+- update
+Uses:
+- AutoExternalRelation
+- AutocompleteServer
+- AutoFormDialog
+- VDatetimePicker
+
+### Components/LaravelAutoCrud/AutoFormDialog.vue
+
+Props:
+- show
+- item
+- type
+- model
+- customFilters
+- filteredItems
+- customItemProps
+- modelName
+Events:
+- update:show
+- update:type
+- update:item
+- formChange
+- isDirty
+- success
+- update
+Uses:
+- AutoForm
+
+### Components/LaravelAutoCrud/AutoTable.vue
+
+Props:
+- title
+- model
+- customFilters
+- filteredItems
+- search
+- exactFilters
+- orderBy
+- customItemProps
+- itemsPerPage
+- itemsPerPageOptions
+- customHeaders
+- hideReset
+- listMode
+- rowProps
+- hiddenColumns
+Events:
+- closeDialog
+- openDialog
+- formChange
+- update:item
+- update
+Uses:
+- AutoFormDialog
+- AutoForm
+- DestroyDialog
+- RestoreDialog
+- DestroyPermanentDialog
+- LoadingOverlay
+- ExpandableText
+- HistoryDialog
+- ImageDialog
+- CustomFieldsManager
+
+### Components/LaravelAutoCrud/AutocompleteServer.vue
+
+Props:
+- modelValue
+- itemTitle
+- label
+- rules
+- endPoint
+- hideDetails
+- customFilter
+- density
+- itemProps
+- customFilters
+- item
+- items
+- filteredItems
+- formData
+Events:
+- update:modelValue
+- update
+Uses:
+- None
+
+### Components/LaravelAutoCrud/CustomFieldsManager.vue
+
+Props:
+- modelName
+- type
+- required
+Events:
+- updated
+Uses:
+- DestroyDialog
+
+### Components/LaravelAutoCrud/DestroyDialog.vue
+
+Props:
+- show
+- elementName
+- item
+- items
+- endPoint
+Events:
+- closeDialog
+- reloadItems
+Uses:
+- None
+
+### Components/LaravelAutoCrud/DestroyPermanentDialog.vue
+
+Props:
+- show
+- elementName
+- item
+- items
+- endPoint
+Events:
+- closeDialog
+- reloadItems
+Uses:
+- None
+
+### Components/LaravelAutoCrud/ExpandableList.vue
+
+Props:
+- text
+- length
+Events:
+- None
+Uses:
+- None
+
+### Components/LaravelAutoCrud/ExpandableText.vue
+
+Props:
+- text
+- length
+Events:
+- None
+Uses:
+- None
+
+### Components/LaravelAutoCrud/HistoryDialog.vue
+
+Props:
+- show
+- item
+Events:
+- closeDialog
+Uses:
+- None
+
+### Components/LaravelAutoCrud/ImageDialog.vue
+
+Props:
+- show
+- imageUrl
+- altText
+Events:
+- closeDialog
+Uses:
+- None
+
+### Components/LaravelAutoCrud/LoadingOverlay.vue
+
+Props:
+- None
+Events:
+- None
+Uses:
+- None
+
+### Components/LaravelAutoCrud/RestoreDialog.vue
+
+Props:
+- show
+- elementName
+- item
+- items
+- endPoint
+Events:
+- closeDialog
+- reloadItems
+Uses:
+- None
+
+### Components/LaravelAutoCrud/VDatetimePicker.vue
+
+Props:
+- datetime
+- type
+- default
+- disabled
+- loading
+- label
+- dialogWidth
+- dateFormat
+- timeFormat
+- clearText
+- okText
+- textFieldProps
+Events:
+- update:datetime
+- update
+Uses:
+- None
+
+### Components/NavBar.vue
+
+Props:
+- theme
+Events:
+- update:theme
+- update
+Uses:
+- None
+
+### Components/NavBarMobile.vue
+
+Props:
+- theme
+Events:
+- update:theme
+- update
+Uses:
+- None
+
+<!-- LARAVEL_AUTO_CRUD_AI_CONTEXT_END -->

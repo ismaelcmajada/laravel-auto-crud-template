@@ -1,19 +1,17 @@
 <script setup>
 import { ref, computed, watch, onMounted, nextTick } from "vue"
-import { usePage } from "@inertiajs/vue3"
 import AutocompleteServer from "./AutocompleteServer.vue"
-import axios from "axios"
 import { ruleRequired, getFieldRules } from "../../Utils/LaravelAutoCrud/rules"
 import AutoFormDialog from "./AutoFormDialog.vue"
 import AutoTable from "./AutoTable.vue"
-import { router } from "@inertiajs/vue3"
 import {
   generateItemTitle,
   searchByWords,
 } from "../../Utils/LaravelAutoCrud/autocompleteUtils"
 import { generateItemTitle as tableItemTitle } from "../../Utils/LaravelAutoCrud/datatableUtils"
+import { useAutoCrud } from "../../Adapters/LaravelAutoCrud/context"
 
-const page = usePage()
+const autoCrud = useAutoCrud()
 
 const props = defineProps([
   "item",
@@ -67,6 +65,7 @@ const storePivotShortcutCreatedItems = ref({})
 
 // Item creado via storeShortcut para la relación principal serverSide
 const storeExternalShortcutCreatedItem = ref(null)
+const loadedModels = ref({})
 
 // Clonamos `item` para manipularlo localmente
 const item = ref(props.item)
@@ -81,7 +80,7 @@ const handleExternalStoreShortcutSuccess = async (flash) => {
       // Para serverSide: guardar el item creado para pasarlo al autocomplete-server
       storeExternalShortcutCreatedItem.value = createdItem
     } else {
-      const response = await axios.get(`${props.externalRelation.endPoint}/all`)
+      const response = await autoCrud.get(`${props.externalRelation.endPoint}/all`)
       items.value = response.data
       if (!props.noFilterItems) {
         items.value = items.value.filter((relatedItem) => {
@@ -111,7 +110,7 @@ const handlePivotStoreShortcutSuccess = (field, flash) => {
     pivotData.value[field.field] = createdItem.id
   } else {
     // Para no-serverSide: recargar items y asignar el id después de que carguen
-    axios.get(`${field.relation.endPoint}/all`).then((response) => {
+    autoCrud.get(`${field.relation.endPoint}/all`).then((response) => {
       relations.value[field.field] = response.data
       nextTick(() => {
         pivotData.value[field.field] = createdItem.id
@@ -129,7 +128,7 @@ const getRelations = () => {
   )
 
   relationsFromFormFields?.forEach((field) => {
-    axios.get(`${field.relation.endPoint}/all`).then((response) => {
+    autoCrud.get(`${field.relation.endPoint}/all`).then((response) => {
       relations.value[field.field] = response.data
     })
   })
@@ -142,7 +141,7 @@ const getRelationItem = async (field, itemId) => {
 
   if (!serverSideRelationItems.value[field.field][itemId]) {
     try {
-      const response = await axios.get(`${field.relation.endPoint}/${itemId}`)
+      const response = await autoCrud.get(`${field.relation.endPoint}/${itemId}`)
       serverSideRelationItems.value[field.field][itemId] = response.data
     } catch (error) {
       console.error(
@@ -189,7 +188,7 @@ const loadAllServerSideRelationItems = () => {
 }
 
 const getItems = async () => {
-  const response = await axios.get(`${props.externalRelation.endPoint}/all`)
+  const response = await autoCrud.get(`${props.externalRelation.endPoint}/all`)
   items.value = response.data
   // Filtra los items que ya están vinculados en la relación
   if (!props.noFilterItems) {
@@ -203,12 +202,11 @@ const getItems = async () => {
 
 const addItem = () => {
   if (selectedItem.value) {
-    router.post(
+    autoCrud.mutate("post",
       `${props.endPoint}/${item.value.id}/bind/${props.externalRelation.relation}/${selectedItem.value}`,
       pivotData.value,
-      {
-        onSuccess: (page) => {
-          item.value = page.props.flash.data
+    ).then((response) => {
+          item.value = response.flash.data
           // Resetear pivotData manteniendo valores de campos con keepValueAfterAdd
           const newPivotData = {}
           props.externalRelation.pivotFields?.forEach((field) => {
@@ -220,28 +218,22 @@ const addItem = () => {
           selectedItem.value = null
           getItems()
           emit("bound")
-        },
-      },
-    )
+    })
   }
 }
 
 const updateItem = (id) => {
-  router.post(
+  autoCrud.mutate("post",
     `${props.endPoint}/${item.value.id}/pivot/${props.externalRelation.relation}/${id}`,
     pivotEditData.value,
-    {
-      onSuccess: (page) => {
-        item.value = page.props.flash.data
+  ).then((response) => {
+        item.value = response.flash.data
         pivotEditData.value = {}
         pivotEditing.value = null
-      },
-      onError: () => {
+  }).catch(() => {
         pivotEditData.value = {}
         pivotEditing.value = null
-      },
-    },
-  )
+  })
 }
 
 const editItem = (id) => {
@@ -262,18 +254,15 @@ const editItem = (id) => {
 }
 
 const removeItem = (relationId) => {
-  router.post(
+  autoCrud.mutate("post",
     `${props.endPoint}/${item.value.id}/unbind/${props.externalRelation.relation}/${relationId}`,
     {},
-    {
-      onSuccess: (page) => {
-        item.value = page.props.flash.data
+  ).then((response) => {
+        item.value = response.flash.data
         selectedItem.value = null
         getItems()
         emit("unbound")
-      },
-    },
-  )
+  })
 }
 
 // ------------------------------------------------------------
@@ -287,7 +276,7 @@ const childModel = computed(() => {
 
   const parts = props.externalRelation.model.split("\\")
   const modelName = parts[parts.length - 1].toLowerCase()
-  const baseModel = page.props.models?.[modelName]
+  const baseModel = autoCrud.model(modelName) ?? loadedModels.value[modelName]
 
   if (!baseModel) return null
 
@@ -317,6 +306,20 @@ const childModel = computed(() => {
   }
 })
 
+const loadChildModel = async () => {
+  if (!isHasMany.value || !props.externalRelation.model) return
+
+  const parts = props.externalRelation.model.split("\\")
+  const modelName = parts[parts.length - 1].toLowerCase()
+
+  if (autoCrud.model(modelName) || loadedModels.value[modelName]) return
+
+  const schema = await autoCrud.loadSchema(modelName)
+  if (schema) {
+    loadedModels.value[modelName] = schema
+  }
+}
+
 // Filtro exacto para cargar solo los hijos del padre actual
 const childExactFilters = computed(() => {
   if (!isHasMany.value || !item.value?.id) return {}
@@ -337,6 +340,7 @@ if (props.externalRelation.pivotFields) {
 
 // Cargar items de relaciones serverSide al inicializar
 onMounted(() => {
+  loadChildModel()
   loadAllServerSideRelationItems()
 })
 
@@ -354,7 +358,7 @@ watch(
   <!-- Título de la relación (opcional) -->
   <v-row v-if="props.withTitle" class="align-center justify-center my-3">
     <v-col class="justify-center align-center text-center" cols="12">
-      <span class="text-h5">{{ props.externalRelation.name }}</span>
+      <span class="text-headline-medium">{{ props.externalRelation.name }}</span>
     </v-col>
   </v-row>
 
@@ -365,7 +369,7 @@ watch(
   <!-- FORM para añadir un nuevo elemento a la tabla pivote -->
   <v-form v-if="!isHasMany" v-model="addForm" @submit.prevent="addItem">
     <v-row
-      class="align-center justify-center my-3 mx-1 elevation-6 rounded pa-5'"
+      class="align-center justify-center my-3 mx-1 elevation-5 rounded pa-5'"
     >
       <!-- Autocomplete principal (relación n:m) -->
       <v-col
@@ -750,7 +754,7 @@ watch(
     <!-- VISTA NORMAL (sin editar) -->
     <v-row
       v-if="relationItem.id !== pivotEditing"
-      class="align-center justify-center my-2 mx-1 elevation-6 rounded pa-2"
+      class="align-center justify-center my-2 mx-1 elevation-5 rounded pa-2"
     >
       <v-col class="my-3">
         {{ generateItemTitle(props.externalRelation.formKey)(relationItem) }}
@@ -836,7 +840,7 @@ watch(
       class="w-100"
     >
       <v-row
-        class="align-center justify-center my-3 mx-1 elevation-6 rounded pa-5'"
+        class="align-center justify-center my-3 mx-1 elevation-5 rounded pa-5'"
       >
         <v-col
           cols="12"

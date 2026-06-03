@@ -27,10 +27,40 @@ class X extends Model
 3. For each FK, add the field's `relation` key (see [relations.md](relations.md)). **Do not** add Eloquent relationship methods.
 4. For hasMany / belongsToMany, add `protected static $externalRelations = [...]`.
 5. Confirm `'models' => app('models')` is shared in `HandleInertiaRequests::share()` (one-time project setup).
-6. Add **one** Inertia page route: `Route::get('/x', fn () => Inertia::render('X'))->name('x');`.
-7. Create `resources/js/Pages/X.vue` with `<auto-table :model="usePage().props.models.x" />`.
+6. Register `createAutoCrudPlugin({ adapter: createInertiaAutoCrudAdapter() })` once in the app frontend bootstrap.
+7. Add **one** Inertia page route: `Route::get('/x', fn () => Inertia::render('X'))->name('x');`.
+8. Create `resources/js/Pages/X.vue` with `<auto-table :model="usePage().props.models.x" />`.
 
 **Do NOT** create: controller, FormRequest, resource route, `$fillable`, `$casts` (for typed fields), relationship methods (for declared relations), file-upload code, audit code, soft-delete UI, export, pagination logic.
+
+---
+
+## Enable API mode for external frontends
+
+When the user asks for a JSON API, external frontend, mobile app, React/Next app, or frontend that does not use Inertia:
+
+1. Create the same AutoCrud model as the normal CRUD recipe. API mode does not change `getFields()`.
+2. Publish config if needed with `php artisan vendor:publish --tag=laravel-auto-crud-config`, then enable API routes in `config/laravel-auto-crud.php`:
+
+```php
+'api' => [
+    'enabled' => true,
+    'prefix' => 'api/laravel-auto-crud',
+    'middleware' => ['forceJsonResponse', 'api', 'auth:sanctum', 'checkForbiddenActions'],
+    'public_middleware' => null,
+],
+```
+
+3. If the app uses another auth driver, replace `auth:sanctum` but keep `forceJsonResponse` before auth.
+4. Tell the external frontend to load schema from `GET /api/laravel-auto-crud/{model}/schema`.
+5. Build requests from `schema.endPoint`; do not hard-code `/api/laravel-auto-crud/...` inside app components unless bootstrapping schema.
+6. Use `POST {endPoint}/load-items` for tables, `POST {endPoint}` for create, `PUT {endPoint}/{id}` for update, `DELETE {endPoint}/{id}` for soft delete, `POST {endPoint}/{id}/restore` for restore, and `DELETE {endPoint}/{id}/force` for permanent delete.
+7. For file updates, use `POST {endPoint}/{id}` with `_method=PUT` and `multipart/form-data`.
+8. If using the package Vue components, register `createAutoCrudPlugin({ adapter: createApiAutoCrudAdapter({ baseUrl, axios }) })` before rendering them.
+
+**Do NOT** create `Route::apiResource`, API controllers, API resources, or API FormRequests for standard AutoCrud CRUD operations.
+
+See full docs: `docs/api-mode.md`.
 
 ---
 
@@ -88,7 +118,7 @@ The package handles upload, storage path (`storage/{public|private}/{images|file
 1. Add `protected static $calendarFields = [...]` on the model with `start`, `end`, `title` keys mapping to fields.
 2. In the page, render `<auto-calendar :model="model" />` (imported from `@/Components/LaravelAutoCrud/AutoCalendar.vue`).
 
-The endpoint `/laravel-auto-crud/{model}/load-calendar-events` is exposed automatically.
+The web endpoint `/laravel-auto-crud/{model}/load-calendar-events` is exposed automatically. In API mode, use `/api/laravel-auto-crud/{model}/load-calendar-events`.
 
 ---
 

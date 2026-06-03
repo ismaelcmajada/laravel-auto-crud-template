@@ -1,7 +1,6 @@
 <script setup>
 import VueCal from "vue-cal"
 import "vue-cal/dist/vuecal.css"
-import axios from "axios"
 import AutoFormDialog from "./AutoFormDialog.vue"
 import useDialogs from "../../Composables/LaravelAutoCrud/useDialogs"
 import {
@@ -10,6 +9,9 @@ import {
 } from "../../Utils/LaravelAutoCrud/dates"
 import { ref, watch } from "vue"
 import { generateItemTitle } from "../../Utils/LaravelAutoCrud/datatableUtils"
+import { useAutoCrud } from "../../Adapters/LaravelAutoCrud/context"
+
+const autoCrud = useAutoCrud()
 
 const props = defineProps(["model"])
 const endPoint = props.model.endPoint
@@ -75,13 +77,14 @@ function getEventClass(event, currentDate) {
 }
 
 const loadEvents = () => {
-  axios
+  autoCrud
     .post(`${endPoint}/load-calendar-events`, {
       start: currentDateInterval.value.startDate,
       end: currentDateInterval.value.endDate,
     })
     .then((response) => {
-      let rawEvents = response.data.eventsData.items
+      const eventsData = response.data.eventsData ?? response.data
+      let rawEvents = eventsData.items
 
       //Ordenar los eventos por created_at
       rawEvents.sort(
@@ -89,7 +92,7 @@ const loadEvents = () => {
       )
 
       if (activeView.value !== "month") {
-        events.value = response.data.eventsData.items
+        events.value = eventsData.items
         events.value = events.value.map((event) => {
           event.start = formatDateTime(event.start)
           event.end = formatDateTime(event.end)

@@ -1,7 +1,9 @@
 <script setup>
 import { ref, onMounted, computed } from "vue"
-import { useForm, router } from "@inertiajs/vue3"
 import DestroyDialog from "./DestroyDialog.vue"
+import { useAutoCrud } from "../../Adapters/LaravelAutoCrud/context"
+
+const autoCrud = useAutoCrud()
 
 const props = defineProps({
   modelName: {
@@ -40,7 +42,7 @@ const defaultField = {
   show_in_table: false,
 }
 
-const formData = useForm({ ...defaultField })
+const formData = autoCrud.form({ ...defaultField })
 const optionsInput = ref("")
 
 // Detectar si el formulario tiene cambios
@@ -49,10 +51,8 @@ const isFormDirty = computed(() => formData.isDirty)
 const loadCustomFields = async () => {
   loading.value = true
   try {
-    const response = await fetch(
-      `/laravel-auto-crud/custom-fields/${props.modelName}`
-    )
-    customFields.value = await response.json()
+    const response = await autoCrud.get(autoCrud.customFieldsEndpoint(props.modelName))
+    customFields.value = response.data
   } catch (error) {
     console.error("Error loading custom fields:", error)
   } finally {
@@ -105,8 +105,8 @@ const saveField = () => {
   }
 
   const url = editingField.value
-    ? `/laravel-auto-crud/custom-fields/${props.modelName}/${editingField.value.id}`
-    : `/laravel-auto-crud/custom-fields/${props.modelName}`
+    ? `${autoCrud.customFieldsEndpoint(props.modelName)}/${editingField.value.id}`
+    : autoCrud.customFieldsEndpoint(props.modelName)
 
   formData.post(url, {
     preserveScroll: true,
@@ -140,21 +140,17 @@ const onFieldDeleted = () => {
 
 // Endpoint para el DestroyDialog
 const customFieldsEndpoint = computed(
-  () => `/laravel-auto-crud/custom-fields/${props.modelName}`
+  () => autoCrud.customFieldsEndpoint(props.modelName)
 )
 
 const toggleActive = (field) => {
-  router.post(
-    `/laravel-auto-crud/custom-fields/${props.modelName}/${field.id}`,
+  autoCrud.mutate("post",
+    `${autoCrud.customFieldsEndpoint(props.modelName)}/${field.id}`,
     { is_active: !field.is_active },
-    {
-      preserveScroll: true,
-      onSuccess: () => {
-        loadCustomFields()
-        emit("updated")
-      },
-    }
-  )
+  ).then(() => {
+    loadCustomFields()
+    emit("updated")
+  })
 }
 
 const getTypeName = (type) => {
@@ -320,7 +316,7 @@ onMounted(() => {
   <!-- Diálogo de confirmación para cerrar sin guardar -->
   <v-dialog v-model="showConfirmCloseDialog" max-width="400">
     <v-card>
-      <v-card-title class="text-h6">Cambios sin guardar</v-card-title>
+      <v-card-title class="text-headline-small">Cambios sin guardar</v-card-title>
       <v-card-text>
         Tienes cambios sin guardar. ¿Estás seguro de que quieres cerrar el
         formulario? Los cambios se perderán.

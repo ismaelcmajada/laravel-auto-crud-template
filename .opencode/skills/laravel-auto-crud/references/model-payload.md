@@ -1,6 +1,6 @@
 # Model payload contract
 
-This is the exact shape of `page.props.models.<modelName>`. It is produced by the `AutoCrud` trait's `getModel()` method on the backend and shared via Inertia's `app('models')` singleton. **All custom frontends (Vue pages, custom widgets, ad-hoc fetches) must read from this object** instead of hard-coding endpoints, headers or rules.
+This is the exact shape of the AutoCrud model payload. In Inertia screens it is available as `page.props.models.<modelName>`, produced by the `AutoCrud` trait's `getModel()` method and shared via Inertia's `app('models')` singleton. In JSON API mode it is available as `data` from `GET /api/laravel-auto-crud/{model}/schema`. **All custom frontends (Vue pages, custom widgets, ad-hoc fetches, external SPAs, mobile apps) must read from this object** instead of hard-coding endpoints, headers or rules.
 
 > ⚠️ Key naming: the trait emits `endPoint` (capital `P`), not `endpoint`. Same casing on the field-level: `endPoint`, `tableKey`, `formKey`, `comboField`, `itemTitle`, `morphType`, `polymorphic`, `pivotTable`, `pivotFields`, `pivotModel`, `foreignKey`, `relatedKey`, `localKey`, `customFieldsEnabled`, `forbiddenActions`, `calendarFields`, `externalRelations`.
 
@@ -9,6 +9,7 @@ This is the exact shape of `page.props.models.<modelName>`. It is produced by th
 ```ts
 {
   endPoint:           string  // e.g. "/laravel-auto-crud/product"
+  endPoints:          { web: string, api: string }
   formFields:         FormField[]
   tableHeaders:       TableHeader[]
   externalRelations:  ExternalRelation[]
@@ -20,7 +21,7 @@ This is the exact shape of `page.props.models.<modelName>`. It is produced by th
 
 ## `endPoint`
 
-Base CRUD URL for the model: `/laravel-auto-crud/{modelNameLowercase}`. Build sub-URLs from it — never hard-code:
+Base CRUD URL for the model. In web/Inertia context it is `/laravel-auto-crud/{modelNameLowercase}`. In API context it is `/api/laravel-auto-crud/{modelNameLowercase}`. Build sub-URLs from it — never hard-code:
 
 ```js
 const base = model.endPoint // /laravel-auto-crud/product
@@ -40,6 +41,15 @@ axios.post(`${base}/${id}/unbind/${rel}/${itemId}`) // detach M2M
 axios.post(`${base}/${id}/pivot/${rel}/${itemId}`, payload) // update pivot
 ```
 
+The payload also includes `endPoints` for both interfaces:
+
+```js
+model.endPoints.web // /laravel-auto-crud/product
+model.endPoints.api // /api/laravel-auto-crud/product
+```
+
+Use `model.endPoint` for the current context. Use `model.endPoints` only when intentionally linking between interfaces.
+
 Static asset URLs (not derived from `endPoint`):
 
 ```
@@ -50,6 +60,15 @@ GET /laravel-auto-crud/private/files/{model}/{field}/{id}    // auth + decrypted
 ```
 
 `{model}` here is the lowercase class basename (same one used in `endPoint`).
+
+In API mode, equivalent file endpoints exist under the API prefix:
+
+```
+GET /api/laravel-auto-crud/public/images/{model}/{field}/{id}
+GET /api/laravel-auto-crud/public/files/{model}/{field}/{id}
+GET /api/laravel-auto-crud/private/images/{model}/{field}/{id}
+GET /api/laravel-auto-crud/private/files/{model}/{field}/{id}
+```
 
 ## `formFields[]`
 
@@ -171,13 +190,75 @@ Configuration block for `<auto-calendar>`. Whatever the model declared in `prote
 - `formFields` already contains custom fields appended at the end (each marked with `isCustomField: true`).
 - `tableHeaders` already contains the visible custom columns (each marked with `isCustomField: true`, `key: 'custom_<name>'`).
 - The CRUD admin endpoints `/laravel-auto-crud/custom-fields/{model}` (index/store/update/destroy/reorder) and `/laravel-auto-crud/custom-fields-types` are available for managing the definitions.
+- In API mode, the same operations are available under `/api/laravel-auto-crud/custom-fields/{model}` and `/api/laravel-auto-crud/custom-fields-types`.
 - On the model row, custom values are exposed under `custom_<name>` keys.
+
+## API mode / external frontends
+
+When the user needs React, Next, mobile, a separate SPA, or any frontend outside Inertia, use the package API mode instead of creating custom controllers.
+
+Publish config if needed with `php artisan vendor:publish --tag=laravel-auto-crud-config`, then enable it in `config/laravel-auto-crud.php`:
+
+```php
+'api' => [
+    'enabled' => true,
+    'prefix' => 'api/laravel-auto-crud',
+    'middleware' => ['forceJsonResponse', 'api', 'auth:sanctum', 'checkForbiddenActions'],
+    'public_middleware' => null,
+],
+```
+
+External frontend flow:
+
+1. Authenticate using the configured middleware, typically Sanctum.
+2. Register `createAutoCrudPlugin({ adapter: createApiAutoCrudAdapter({ baseUrl, axios }) })` if using the package Vue components.
+3. Fetch `GET /api/laravel-auto-crud/{model}/schema`.
+4. Read the schema from `response.data.data`.
+5. Use `schema.endPoint` to call CRUD endpoints.
+6. Render forms from `schema.formFields` and tables from `schema.tableHeaders`.
+7. Use `schema.externalRelations` to discover related model endpoints.
+
+Protected API endpoints:
+
+```http
+GET    /api/laravel-auto-crud/{model}/schema
+POST   /api/laravel-auto-crud/{model}/load-items
+GET    /api/laravel-auto-crud/{model}/all
+GET    /api/laravel-auto-crud/{model}/{id}
+POST   /api/laravel-auto-crud/{model}
+PUT    /api/laravel-auto-crud/{model}/{id}
+PATCH  /api/laravel-auto-crud/{model}/{id}
+DELETE /api/laravel-auto-crud/{model}/{id}
+POST   /api/laravel-auto-crud/{model}/{id}/restore
+DELETE /api/laravel-auto-crud/{model}/{id}/force
+```
+
+Relations:
+
+```http
+POST   /api/laravel-auto-crud/{model}/{id}/bind/{externalRelation}/{item}
+PUT    /api/laravel-auto-crud/{model}/{id}/pivot/{externalRelation}/{item}
+DELETE /api/laravel-auto-crud/{model}/{id}/unbind/{externalRelation}/{item}
+```
+
+Custom fields:
+
+```http
+GET    /api/laravel-auto-crud/custom-fields-types
+GET    /api/laravel-auto-crud/custom-fields/{model}
+POST   /api/laravel-auto-crud/custom-fields/{model}
+PUT    /api/laravel-auto-crud/custom-fields/{model}/{id}
+DELETE /api/laravel-auto-crud/custom-fields/{model}/{id}
+POST   /api/laravel-auto-crud/custom-fields/{model}/reorder
+```
+
+Do not create `Route::apiResource`, API controllers, or API FormRequests for standard AutoCrud models. If the desired endpoint is one of the above, the package already owns it.
 
 ## Building a custom frontend — checklist
 
 When you need a non-standard UI (custom dashboard, bespoke list, modal flow):
 
-1. **Read** `page.props.models.<name>` — never hard-code anything that the payload already has.
+1. **Read** `page.props.models.<name>` for Inertia or `GET /api/laravel-auto-crud/{model}/schema` for external frontends — never hard-code anything that the payload already has.
 2. Use `model.endPoint` to build URLs, including for `load-items`, `bind`, `unbind`, `pivot`, `export-excel`, etc.
 3. Use `model.tableHeaders` if you want the same column projection as `<auto-table>` but with a different layout — the `key` and `type` are already there.
 4. Use `model.formFields` to drive a custom form widget (the rules in `field.rules` mirror what the backend `DynamicFormRequest` enforces).

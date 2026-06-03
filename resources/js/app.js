@@ -21,6 +21,11 @@ import "@mdi/font/css/materialdesignicons.css"
 import AppLayout from "@/Layouts/App.vue"
 import DashboardLayout from "@/Layouts/Dashboard.vue"
 
+import {
+  createAutoCrudPlugin,
+  createInertiaAutoCrudAdapter,
+} from "@/Adapters/LaravelAutoCrud"
+
 const appName =
   window.document.getElementsByTagName("title")[0]?.innerText || "Dashboard"
 
@@ -66,7 +71,7 @@ createInertiaApp({
   resolve: async (name) => {
     const page = await resolvePageComponent(
       `./Pages/${name}.vue`,
-      import.meta.glob("./Pages/**/*.vue")
+      import.meta.glob("./Pages/**/*.vue"),
     )
     page.default.layout = name.startsWith("Dashboard/")
       ? DashboardLayout
@@ -82,6 +87,7 @@ createInertiaApp({
       .use(vuetify)
       .use(link)
       .use(ZiggyVue, Ziggy)
+      .use(createAutoCrudPlugin({ adapter: createInertiaAutoCrudAdapter() }))
       .mount(el)
   },
   progress: {

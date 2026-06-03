@@ -21,7 +21,7 @@ const dialogState = computed({
   <v-dialog v-model="dialogState">
     <v-card>
       <v-card-title>
-        <span class="text-h5">Vista de imagen</span>
+        <span class="text-headline-medium">Vista de imagen</span>
       </v-card-title>
 
       <v-divider></v-divider>

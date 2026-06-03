@@ -1,6 +1,8 @@
 <script setup>
 import { computed } from "vue"
-import { router } from "@inertiajs/vue3"
+import { useAutoCrud } from "../../Adapters/LaravelAutoCrud/context"
+
+const autoCrud = useAutoCrud()
 
 const props = defineProps(["show", "elementName", "item", "items", "endPoint"])
 
@@ -15,23 +17,15 @@ const dialogState = computed({
 
 const submit = () => {
   if (props.items && props.items.length > 0) {
-    router.post(`${props.endPoint}/restore-many`, props.items, {
-      onSuccess: () => {
-        emit("reloadItems")
-        dialogState.value = false
-      },
+    autoCrud.mutate("post", `${props.endPoint}/restore-many`, props.items).then(() => {
+      emit("reloadItems")
+      dialogState.value = false
     })
   } else if (props.item.id) {
-    router.post(
-      `${props.endPoint}/${props.item.id}/restore`,
-      {},
-      {
-        onSuccess: () => {
-          emit("reloadItems")
-          dialogState.value = false
-        },
-      }
-    )
+    autoCrud.mutate("post", `${props.endPoint}/${props.item.id}/restore`, {}).then(() => {
+      emit("reloadItems")
+      dialogState.value = false
+    })
   } else {
     dialogState.value = false
   }
@@ -42,7 +36,7 @@ const submit = () => {
   <v-dialog scrollable v-model="dialogState" width="auto">
     <v-card>
       <v-card-title>
-        <span class="text-h5"
+        <span class="text-headline-medium"
           >Restaurar
           {{ props.items && props.items.length > 0 ? "elementos" : "elemento" }}
         </span>

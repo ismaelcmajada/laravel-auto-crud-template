@@ -28,13 +28,13 @@ const formatDate = (date) => {
   <v-dialog scrollable v-model="dialogState" width="1024">
     <v-card>
       <v-card-title>
-        <span class="text-h5">Historial</span>
+        <span class="text-headline-medium">Historial</span>
       </v-card-title>
       <v-divider></v-divider>
       <v-card-text>
         <v-container>
           <div v-for="record in props.item.records" :key="record.id">
-            <div class="elevation-6 rounded">
+            <div class="elevation-5 rounded">
               <v-row class="ma-0 mb-3 px-2 pt-2 pt-md-0">
                 <v-col cols="12" md="3" class="d-flex align-center">
                   <v-row class="py-3">

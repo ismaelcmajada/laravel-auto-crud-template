@@ -207,10 +207,10 @@ watch(
       <v-card-actions>
         <v-spacer></v-spacer>
         <slot name="actions">
-          <v-btn color="grey lighten-1" text @click="clearHandler">
+          <v-btn color="grey-lighten-1" variant="text" @click="clearHandler">
             {{ clearText }}
           </v-btn>
-          <v-btn color="green darken-1" text @click="okHandler">
+          <v-btn color="green-darken-1" variant="text" @click="okHandler">
             {{ okText }}
           </v-btn>
         </slot>

@@ -1,7 +1,9 @@
 import { ref, watch, reactive, computed } from "vue"
 import debounce from "lodash.debounce"
+import { useAutoCrud } from "../../Adapters/LaravelAutoCrud/context"
 
 export default function useTableServer() {
+  const autoCrud = useAutoCrud()
   const loading = ref(false)
 
   const endPoint = ref("")
@@ -57,7 +59,7 @@ export default function useTableServer() {
     const sortByJson = JSON.stringify(tableData.sortBy)
     const exactFiltersJson = JSON.stringify(tableData.exactFilters)
 
-    axios
+    autoCrud
       .post(`${endPoint.value}/load-items`, {
         page: tableData.page,
         itemsPerPage: tableData.itemsPerPage,
@@ -67,17 +69,22 @@ export default function useTableServer() {
         deleted: tableData.deleted,
       })
       .then((response) => {
-        tableData.items = response.data.tableData.items
-        tableData.itemsLength = response.data.tableData.itemsLength
+        const responseData = response.data.tableData ? response.data : {
+          tableData: response.data,
+          model: response.meta?.schema,
+        }
+
+        tableData.items = responseData.tableData.items
+        tableData.itemsLength = responseData.tableData.itemsLength
         // Actualizar modelo completo si viene en la respuesta
-        if (response.data.model) {
-          dynamicModel.value = response.data.model
+        if (responseData.model) {
+          dynamicModel.value = responseData.model
           // Actualizar headers desde el modelo
-          if (response.data.model.tableHeaders) {
-            itemHeaders.value = response.data.model.tableHeaders
+          if (responseData.model.tableHeaders) {
+            itemHeaders.value = responseData.model.tableHeaders
             // Actualizar selectedHeaders para incluir nuevos headers
             const currentKeys = selectedHeaders.value
-            const newKeys = response.data.model.tableHeaders.map((h) => h.key)
+            const newKeys = responseData.model.tableHeaders.map((h) => h.key)
             selectedHeaders.value = newKeys.filter(
               (k) => currentKeys.includes(k) || !currentKeys.length
             )

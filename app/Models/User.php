@@ -63,18 +63,6 @@ class User extends Model implements AuthenticatableContract
                     'required' => true
                 ]
             ],
-            [
-                'name' => 'Imagenes',
-                'field' => 'images',
-                'type' => 'image',
-                'multiple' => true,
-                'public' => false,
-                'table' => true,
-                'form' => true,
-                'rules' => [
-                    'required' => false
-                ]
-            ]
         ];
     }
 

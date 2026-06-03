@@ -11,8 +11,11 @@ Route::apiResource('products', ProductController::class);
 ```
 
 ```php
-// ✅ Good — only one Inertia page route
+// ✅ Good for web/Inertia — only one Inertia page route
 Route::get('/products', fn () => Inertia::render('Products'))->name('products');
+
+// ✅ Good for external frontends — enable package API mode, then consume:
+// GET /api/laravel-auto-crud/product/schema
 ```
 
 ## Controllers / FormRequests
@@ -186,10 +189,19 @@ axios.get("/laravel-auto-crud/products")
 ```
 
 ```js
-// ✅ Good — read from the payload
+// ✅ Good — read from the payload (web or API context)
 axios.get(model.endPoint)
+```
+
+```js
+// ❌ Bad — custom API route for a standard CRUD operation
+axios.post("/api/products", payload)
+
+// ✅ Good — AutoCrud API mode
+const schema = await axios.get("/api/laravel-auto-crud/product/schema")
+await axios.post(schema.data.data.endPoint, payload)
 ```
 
 ## When you genuinely need something custom
 
-Outside the AutoCrud surface (webhook, public API, non-CRUD action) writing your own controller/route is fine — but write it **alongside** the AutoCrud setup, never as a replacement for it.
+Outside the AutoCrud surface (webhook, custom non-CRUD action, third-party callback) writing your own controller/route is fine — but write it **alongside** the AutoCrud setup, never as a replacement for it. A standard JSON CRUD API is part of the AutoCrud surface via API mode.

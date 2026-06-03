@@ -1,15 +1,16 @@
 import { utils, writeFileXLSX } from "xlsx"
 import { useToast } from "vue-toastification"
+import { getAutoCrudAdapter } from "../../Adapters/LaravelAutoCrud/context"
 
 export function exportToExcel(endPoint, headers, modifications = {}) {
   const exportableHeaders = headers.filter(
     (header) => header.exportable !== false
   )
 
-  axios
+  getAutoCrudAdapter()
     .get(`${endPoint}/export-excel`)
     .then((response) => {
-      const data = response.data.itemsExcel
+      const data = response.data.itemsExcel ?? response.data
       const worksheet = []
 
       const header = exportableHeaders.map((header) => header.title)

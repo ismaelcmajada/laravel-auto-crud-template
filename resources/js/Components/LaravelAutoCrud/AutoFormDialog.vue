@@ -1,9 +1,9 @@
 <script setup>
 import AutoForm from "./AutoForm.vue"
 import { computed, ref } from "vue"
-import { usePage } from "@inertiajs/vue3"
+import { useAutoCrud } from "../../Adapters/LaravelAutoCrud/context"
 
-const page = usePage()
+const autoCrud = useAutoCrud()
 
 const props = defineProps([
   "show",
@@ -30,7 +30,7 @@ const model = computed(() => {
     const parts = props.modelName.split("\\")
     const modelName = parts[parts.length - 1].toLowerCase()
 
-    return page.props.models[modelName]
+    return autoCrud.model(modelName)
   } else {
     return props.model
   }
@@ -213,7 +213,7 @@ const cancelClose = () => {
   <!-- Confirmation dialog for unsaved changes -->
   <v-dialog v-model="showConfirmDialog" max-width="400">
     <v-card>
-      <v-card-title class="text-h6"> Cambios sin guardar </v-card-title>
+      <v-card-title class="text-headline-small"> Cambios sin guardar </v-card-title>
       <v-card-text>
         Tienes cambios sin guardar. ¿Estás seguro de que quieres cerrar el
         formulario? Los cambios se perderán.

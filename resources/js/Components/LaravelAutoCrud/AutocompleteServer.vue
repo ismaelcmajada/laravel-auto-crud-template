@@ -1,8 +1,10 @@
 <script setup>
 import { ref, watch } from "vue"
-import axios from "axios"
 import debounce from "lodash.debounce"
 import { generateItemTitle } from "../../Utils/LaravelAutoCrud/autocompleteUtils"
+import { useAutoCrud } from "../../Adapters/LaravelAutoCrud/context"
+
+const autoCrud = useAutoCrud()
 
 const props = defineProps([
   "modelValue",
@@ -60,13 +62,13 @@ const debounceLoadAutocompleteItems = debounce((search) => {
 
     waitingForData = true
 
-    axios
+    autoCrud
       .post(`${props.endPoint}/load-autocomplete-items`, {
         search: search,
         key: props.itemTitle,
       })
       .then((response) => {
-        items.value = response.data.autocompleteItems
+        items.value = response.data.autocompleteItems ?? response.data
 
         if (props.items && props.items.length > 0) {
           items.value = items.value?.filter((item) =>

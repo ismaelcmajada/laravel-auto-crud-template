@@ -11,12 +11,12 @@ import useDialogs from "../../Composables/LaravelAutoCrud/useDialogs"
 import HistoryDialog from "./HistoryDialog.vue"
 import ImageDialog from "./ImageDialog.vue"
 import CustomFieldsManager from "./CustomFieldsManager.vue"
-import { usePage } from "@inertiajs/vue3"
 import { useDisplay } from "vuetify"
 import { computed, watch, ref, onMounted } from "vue"
 import { generateItemTitle } from "../../Utils/LaravelAutoCrud/datatableUtils"
+import { useAutoCrud } from "../../Adapters/LaravelAutoCrud/context"
 
-const page = usePage()
+const autoCrud = useAutoCrud()
 
 const { mobile } = useDisplay()
 
@@ -100,8 +100,12 @@ const dynamicModel = computed(() => {
   return serverModel.value
 })
 
-const forbiddenActions =
-  model.value.forbiddenActions[page.props.auth.user.role] ?? []
+const forbiddenActions = computed(() => {
+  const role = autoCrud.user()?.role ?? autoCrud.user()?.laravel_auto_crud_role
+  return model.value.forbiddenActions?.[role] ?? []
+})
+
+const assetUrl = (path) => autoCrud.assetUrl(path)
 
 // Mapa de externalRelations por su key (relation name) para renderizar en tabla
 const externalRelationsMap = computed(() => {
@@ -315,9 +319,8 @@ const openHistoryDialog = (historyItem) => {
 const showCustomFieldsDialog = ref(false)
 
 const modelName = computed(() => {
-  // Extraer nombre del modelo desde el endpoint: /laravel-auto-crud/product -> product
   const endpoint = model.value.endPoint || ""
-  return endpoint.replace("/laravel-auto-crud/", "")
+  return endpoint.split("/").filter(Boolean).pop()
 })
 
 const customFieldsEnabled = computed(() => {
@@ -576,7 +579,7 @@ watch(item, (value) => {
       :class="{ 'bg-red-lighten-4': tableData.deleted }"
     >
       <v-col class="py-0">
-        <span class="text-subtitle-1 font-weight-medium">{{ title }}</span>
+        <span class="text-body-large font-weight-medium">{{ title }}</span>
       </v-col>
       <v-col class="text-end py-0">
         <slot
@@ -693,7 +696,7 @@ watch(item, (value) => {
     <!-- Items en modo lista -->
     <template v-for="listItem in tableData.items" :key="listItem.id">
       <v-row
-        class="align-center justify-center my-2 mx-1 elevation-6 rounded pa-2"
+        class="align-center justify-center my-2 mx-1 elevation-5 rounded pa-2"
         :class="{ 'bg-red-lighten-4': tableData.deleted }"
       >
         <!-- Columnas de datos -->
@@ -702,7 +705,7 @@ watch(item, (value) => {
           :key="header.key"
         >
           <slot :name="`item.${header.key}`" :item="listItem">
-            <div class="text-caption text-grey">{{ header.title }}</div>
+            <div class="text-body-small text-grey">{{ header.title }}</div>
             <div>
               <!-- Si header tiene relation y tableKey (belongsTo) -->
               <template v-if="header.relation && header.relation.tableKey">
@@ -766,25 +769,25 @@ watch(item, (value) => {
                     </v-btn>
                     <v-avatar size="50" class="mx-1 rounded">
                       <v-img
-                        :src="`/laravel-auto-crud/${
+                        :src="assetUrl(
                           parseJsonArray(listItem[header.key])[
                             getClampedIndex(
                               `${listItem.id}_${header.key}`,
                               parseJsonArray(listItem[header.key]).length,
                             )
                           ]
-                        }`"
+                        )"
                         cover
                         @click.stop="
                           openImageDialog(
-                            `/laravel-auto-crud/${
+                            assetUrl(
                               parseJsonArray(listItem[header.key])[
                                 getClampedIndex(
                                   `${listItem.id}_${header.key}`,
                                   parseJsonArray(listItem[header.key]).length,
                                 )
                               ]
-                            }`,
+                            ),
                             parseJsonArray(listItem[header.key])[
                               getClampedIndex(
                                 `${listItem.id}_${header.key}`,
@@ -824,10 +827,10 @@ watch(item, (value) => {
                 <template v-else>
                   <v-avatar size="40">
                     <v-img
-                      :src="`/laravel-auto-crud/${listItem[header.key]}`"
+                      :src="assetUrl(listItem[header.key])"
                       @click.stop="
                         openImageDialog(
-                          `/laravel-auto-crud/${listItem[header.key]}`,
+                          assetUrl(listItem[header.key]),
                           listItem[header.key],
                         )
                       "
@@ -845,7 +848,7 @@ watch(item, (value) => {
                   size="small"
                   variant="text"
                   color="primary"
-                  :href="`/laravel-auto-crud/${listItem[header.key]}`"
+                  :href="assetUrl(listItem[header.key])"
                   target="_blank"
                 >
                   <v-icon>mdi-download</v-icon>
@@ -988,7 +991,7 @@ watch(item, (value) => {
   </v-card>
 
   <!-- MODO TABLA (original) -->
-  <v-card v-else elevation="6" class="ma-5" variant="outlined">
+  <v-card v-else elevation="5" class="ma-5" variant="outlined">
     <v-data-table-server
       multi-sort
       :loading="loading"
@@ -1179,25 +1182,25 @@ watch(item, (value) => {
                   </v-btn>
                   <v-avatar size="60" class="mx-1 rounded">
                     <v-img
-                      :src="`/laravel-auto-crud/${
+                      :src="assetUrl(
                         parseJsonArray(item[header.key])[
                           getClampedIndex(
                             `${item.id}_${header.key}`,
                             parseJsonArray(item[header.key]).length,
                           )
                         ]
-                      }`"
+                      )"
                       cover
                       @click.stop="
                         openImageDialog(
-                          `/laravel-auto-crud/${
+                          assetUrl(
                             parseJsonArray(item[header.key])[
                               getClampedIndex(
                                 `${item.id}_${header.key}`,
                                 parseJsonArray(item[header.key]).length,
                               )
                             ]
-                          }`,
+                          ),
                           parseJsonArray(item[header.key])[
                             getClampedIndex(
                               `${item.id}_${header.key}`,
@@ -1237,13 +1240,13 @@ watch(item, (value) => {
               <!-- Imagen única -->
               <template v-else>
                 <v-img
-                  :src="`/laravel-auto-crud/${item[header.key]}`"
+                  :src="assetUrl(item[header.key])"
                   max-width="150"
                   max-height="150"
                   class="mx-auto cursor-pointer"
                   @click="
                     openImageDialog(
-                      `/laravel-auto-crud/${item[header.key]}`,
+                      assetUrl(item[header.key]),
                       item[header.key],
                     )
                   "
@@ -1263,7 +1266,7 @@ watch(item, (value) => {
                   size="small"
                   variant="text"
                   color="primary"
-                  :href="`/laravel-auto-crud/${filePath}`"
+                  :href="assetUrl(filePath)"
                   target="_blank"
                   class="ma-1"
                 >
@@ -1280,7 +1283,7 @@ watch(item, (value) => {
                   size="small"
                   variant="text"
                   color="primary"
-                  :href="`/laravel-auto-crud/${item[header.key]}`"
+                  :href="assetUrl(item[header.key])"
                   target="_blank"
                 >
                   <v-icon>mdi-download</v-icon>

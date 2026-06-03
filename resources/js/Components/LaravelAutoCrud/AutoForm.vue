@@ -1,6 +1,4 @@
 <script setup>
-import { useForm } from "@inertiajs/vue3"
-import axios from "axios"
 import { ref, computed, watch, nextTick } from "vue"
 import AutoExternalRelation from "./AutoExternalRelation.vue"
 import AutocompleteServer from "./AutocompleteServer.vue"
@@ -12,6 +10,9 @@ import {
   generateItemTitle,
 } from "../../Utils/LaravelAutoCrud/autocompleteUtils"
 import VDatetimePicker from "./VDatetimePicker.vue"
+import { useAutoCrud } from "../../Adapters/LaravelAutoCrud/context"
+
+const autoCrud = useAutoCrud()
 
 const props = defineProps([
   "item",
@@ -78,7 +79,7 @@ const getRelations = () => {
   )
 
   relationsFromFormFields.forEach((field) => {
-    axios.get(`${field.relation.endPoint}/all`).then((response) => {
+    autoCrud.get(`${field.relation.endPoint}/all`).then((response) => {
       relations.value[field.field] = response.data
     })
   })
@@ -90,7 +91,7 @@ const getComboboxItems = () => {
   )
 
   comboboxFields.forEach((field) => {
-    axios.get(`${field.endPoint}/all`).then((response) => {
+    autoCrud.get(`${field.endPoint}/all`).then((response) => {
       comboboxItems.value[field.field] = response.data
     })
   })
@@ -102,9 +103,11 @@ const mapComboboxItems = (field, items) => {
 
 const form = ref(false)
 
-const formData = useForm(
+const formData = autoCrud.form(
   Object.fromEntries(filteredFormFields.value.map((f) => [f.field, null])),
 )
+
+const assetUrl = (path) => autoCrud.assetUrl(path)
 
 const initFields = () => {
   // Resetear archivos a eliminar, previews y forzar reseteo del input
@@ -150,9 +153,7 @@ const initFields = () => {
               imagePreview.value[field.field] = []
             }
           } else {
-            imagePreview.value[field.field] = `/laravel-auto-crud/${
-              item.value[field.field]
-            }`
+            imagePreview.value[field.field] = assetUrl(item.value[field.field])
           }
         }
         if (field.type === "file") {
@@ -231,24 +232,24 @@ const submit = () => {
     formData.post(`${model.value.endPoint}/${item.value.id}`, {
       _method: "put",
       forceFormData: true,
-      onSuccess: (page) => {
-        item.value = page.props.flash.data
+      onSuccess: (response) => {
+        item.value = response.flash.data
         filesToDelete.value = {}
         // Limpiar transform para evitar re-envío de archivos y flags
         formData.transform((data) => data)
         initFields()
-        emit("success", page.props.flash)
+        emit("success", response.flash)
       },
     })
   } else if (type.value === "create") {
     formData.post(model.value.endPoint, {
-      onSuccess: (page) => {
-        item.value = page.props.flash.data
+      onSuccess: (response) => {
+        item.value = response.flash.data
         filesToDelete.value = {}
         // Limpiar transform para evitar re-envío de archivos y flags
         formData.transform((data) => data)
         initFields()
-        emit("success", page.props.flash)
+        emit("success", response.flash)
         if (model.value.externalRelations.length > 0) {
           type.value = "edit"
         } else {
@@ -490,7 +491,7 @@ const removeFile = (fileFieldName, index = null) => {
 const downloadFile = (fileFieldName, filePath = null) => {
   const link = document.createElement("a")
   const path = filePath || filePreview.value[fileFieldName]
-  link.href = `/laravel-auto-crud/${path}`
+  link.href = assetUrl(path)
   link.download = filePath ? filePath.split("/").pop() : fileFieldName
   link.click()
 }
@@ -674,7 +675,7 @@ watch(isFormDirty, (value) => {
               <!-- Preview imagen única -->
               <v-row
                 v-if="!field.multiple && imagePreview[field.field]"
-                class="align-center justify-center my-3 mx-1 elevation-6 rounded pa-2"
+                class="align-center justify-center my-3 mx-1 elevation-5 rounded pa-2"
               >
                 <v-col cols="12" md="1" class="text-center">
                   {{ field.name }}
@@ -715,7 +716,7 @@ watch(isFormDirty, (value) => {
                 >
                   <v-col cols="12" md="10" class="d-flex justify-center">
                     <v-img
-                      :src="`/laravel-auto-crud/${imagePath}`"
+                      :src="assetUrl(imagePath)"
                       max-width="150"
                       max-height="150"
                       contain
@@ -790,7 +791,7 @@ watch(isFormDirty, (value) => {
               <!-- Preview archivo único -->
               <v-row
                 v-if="!field.multiple && filePreview[field.field]"
-                class="align-center justify-center my-3 mx-1 elevation-6 rounded pa-2"
+                class="align-center justify-center my-3 mx-1 elevation-5 rounded pa-2"
               >
                 <v-col cols="12" md="10" class="text-center">
                   {{ field.name }}
