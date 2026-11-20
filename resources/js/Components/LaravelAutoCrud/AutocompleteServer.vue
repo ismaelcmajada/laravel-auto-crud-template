@@ -21,6 +21,7 @@ const props = defineProps([
   "items",
   "filteredItems",
   "formData",
+  "context",
 ])
 const emit = defineEmits(["update:modelValue"])
 
@@ -34,7 +35,7 @@ watch(
   (newItem) => {
     if (newItem && newItem.id !== selectedItem.value?.id) {
       selectedItem.value = newItem
-      // Inyectar el item en la lista para que el autocomplete lo muestre
+      // Inyectar el item en la lista para que el autocomplete lo muestrea
       if (!items.value.some((i) => i.id === newItem.id)) {
         items.value = [newItem, ...items.value]
       }
@@ -46,48 +47,56 @@ watch(selectedItem, (value) => {
   emit("update:modelValue", value?.id)
 })
 
-let waitingForData = false
+let requestGeneration = 0
 
 const loadAutocompleteItems = (search) => {
-  if (!loading.value) {
-    loading.value = true
-  }
-
+  loading.value = true
   debounceLoadAutocompleteItems(search)
 }
 
 const debounceLoadAutocompleteItems = debounce((search) => {
-  if (search) {
-    if (waitingForData) return
-
-    waitingForData = true
-
-    autoCrud
-      .post(`${props.endPoint}/load-autocomplete-items`, {
-        search: search,
-        key: props.itemTitle,
-      })
-      .then((response) => {
-        items.value = response.data.autocompleteItems ?? response.data
-
-        if (props.items && props.items.length > 0) {
-          items.value = items.value?.filter((item) =>
-            props.items.some((relatedItem) => relatedItem.id === item.id),
-          )
-        }
-
-        // Apply filteredItems function if provided
-        if (props.filteredItems) {
-          items.value = props.filteredItems(items.value, props.formData)
-        }
-
-        waitingForData = false
-        loading.value = false
-      })
-  } else {
+  if (!search) {
+    requestGeneration++
     items.value = []
     loading.value = false
+    return
   }
+
+  const generation = ++requestGeneration
+
+  const payload = {
+    search: search,
+    key: props.itemTitle,
+  }
+
+  if (props.context) {
+    payload.context = props.context
+  }
+
+  autoCrud
+    .post(`${props.endPoint}/load-autocomplete-items`, payload)
+    .then((response) => {
+      if (generation !== requestGeneration) return
+
+      items.value = response.data.autocompleteItems ?? response.data
+
+      if (props.items && props.items.length > 0) {
+        items.value = items.value?.filter((item) =>
+          props.items.some((relatedItem) => relatedItem.id === item.id),
+        )
+      }
+
+      if (props.filteredItems) {
+        items.value = props.filteredItems(items.value, props.formData)
+      }
+
+      loading.value = false
+    })
+    .catch((error) => {
+      if (generation !== requestGeneration) return
+      console.error("AutocompleteServer error:", error)
+      loading.value = false
+    })
 }, 500)
 </script>
 

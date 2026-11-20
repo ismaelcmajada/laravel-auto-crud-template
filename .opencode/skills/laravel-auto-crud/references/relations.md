@@ -90,6 +90,20 @@ protected static $externalRelations = [
 
 `pivotFields` follow the same shape as `getFields()` entries. `withPivot([...])` is added automatically — do not add it manually.
 
+### Server-side autocomplete filtering
+
+`serverSide` relations can send form context so the backend filters **before** the result limit (`config('laravel-auto-crud.autocomplete_limit')`, default 6):
+
+```php
+[
+    'relation'            => 'vehicles',
+    'serverSide'          => true,
+    'autocompleteContext' => ['start_date', 'end_date'],
+]
+```
+
+Implement `scopeAutocompleteContext($query, array $context)` on the **related** model. Use it whenever the frontend would otherwise filter autocomplete results client-side (availability, stock, …) — the limit applies after the search, so client-side filtering can hide valid matches. The edited record id is sent automatically as `context.item_id`.
+
 ## Anti-patterns
 
 ```php

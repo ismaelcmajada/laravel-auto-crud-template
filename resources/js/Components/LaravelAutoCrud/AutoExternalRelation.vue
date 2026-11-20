@@ -70,6 +70,33 @@ const loadedModels = ref({})
 // Clonamos `item` para manipularlo localmente
 const item = ref(props.item)
 
+// Contexto que se envía al autocompletado server-side para que el backend
+// pueda filtrar antes del límite (p. ej. fechas de la reserva). Las claves se
+// declaran en `autocompleteContext` de la relación y se toman del formulario.
+const autocompleteContext = computed(() => {
+  const keys = props.externalRelation.autocompleteContext
+
+  if (!Array.isArray(keys) || keys.length === 0) {
+    return null
+  }
+
+  const context = {}
+
+  keys.forEach((key) => {
+    const value = props.formData?.[key]
+
+    if (value !== undefined) {
+      context[key] = value
+    }
+  })
+
+  if (item.value?.id) {
+    context.item_id = item.value.id
+  }
+
+  return context
+})
+
 const handleExternalStoreShortcutSuccess = async (flash) => {
   const createdItem = flash.data
   if (!createdItem) return
@@ -105,15 +132,25 @@ const handlePivotStoreShortcutSuccess = (field, flash) => {
   if (!createdItem) return
 
   if (field.relation.serverSide) {
-    // Para serverSide: guardar el item creado y asignar el id
+    // Para serverSide: guardar el item creado para pasarlo al autocomplete-server
+    // y asignar el id tanto en el formulario de añadir como en el de edición
     storePivotShortcutCreatedItems.value[field.field] = createdItem
     pivotData.value[field.field] = createdItem.id
+    pivotEditData.value[field.field] = createdItem.id
   } else {
     // Para no-serverSide: recargar items y asignar el id después de que carguen
     autoCrud.get(`${field.relation.endPoint}/all`).then((response) => {
-      relations.value[field.field] = response.data
+      const items = response.data
+      // Asegurarse de que el item creado está en la lista para que el
+      // v-autocomplete pueda mostrar su título aunque el GET /all no lo
+      // incluya (p.ej. por filtros en el backend)
+      if (!items.some((i) => i.id === createdItem.id)) {
+        items.unshift(createdItem)
+      }
+      relations.value[field.field] = items
       nextTick(() => {
         pivotData.value[field.field] = createdItem.id
+        pivotEditData.value[field.field] = createdItem.id
       })
     })
   }
@@ -216,7 +253,9 @@ const addItem = () => {
           })
           pivotData.value = newPivotData
           selectedItem.value = null
-          getItems()
+          if (!props.externalRelation.serverSide) {
+            getItems()
+          }
           emit("bound")
     })
   }
@@ -260,7 +299,9 @@ const removeItem = (relationId) => {
   ).then((response) => {
         item.value = response.flash.data
         selectedItem.value = null
-        getItems()
+        if (!props.externalRelation.serverSide) {
+          getItems()
+        }
         emit("unbound")
   })
 }
@@ -502,6 +543,7 @@ watch(
             props.filteredItems?.[props.externalRelation.relation]
           "
           :form-data="props.formData"
+          :context="autocompleteContext"
           @update:modelValue="addItem"
         >
           <!-- storeShortcut para la relación principal -->
@@ -547,6 +589,7 @@ watch(
             props.filteredItems?.[props.externalRelation.relation]
           "
           :form-data="props.formData"
+          :context="autocompleteContext"
           :item="storeExternalShortcutCreatedItem"
         >
           <!-- storeShortcut para la relación principal -->
@@ -652,6 +695,7 @@ watch(
           :end-point="field.relation.endPoint"
           :filtered-items="props.filteredItems?.[field.relation.relation]"
           :form-data="props.formData"
+          :context="autocompleteContext"
           :item="storePivotShortcutCreatedItems[field.field] || null"
         >
           <template v-if="field.relation.storeShortcut" v-slot:prepend>
@@ -941,10 +985,12 @@ watch(
             density="compact"
             :end-point="field.relation.endPoint"
             :item="
+              storePivotShortcutCreatedItems[field.field] ||
               serverSideRelationItems[field.field]?.[pivotEditData[field.field]]
             "
             :filtered-items="props.filteredItems?.[field.relation.relation]"
             :form-data="props.formData"
+            :context="autocompleteContext"
           >
             <template v-if="field.relation.storeShortcut" v-slot:prepend>
               <v-btn
