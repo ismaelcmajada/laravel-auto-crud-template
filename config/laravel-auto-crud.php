@@ -3,6 +3,12 @@
 return [
     'timezone' => 'Atlantic/Canary',
 
+    /*
+     * Número máximo de resultados que devuelve el autocompletado server-side
+     * (/laravel-auto-crud/{model}/load-autocomplete-items).
+     */
+    'autocomplete_limit' => 6,
+
     'web' => [
         'enabled' => true,
         'prefix' => 'laravel-auto-crud',
