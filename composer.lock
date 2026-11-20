@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c9e43ba951dc42a64fb6a5db9c889a0e",
+    "content-hash": "340de9f820797da46eba28b6936d566f",
     "packages": [
         {
             "name": "brick/math",
@@ -646,22 +646,22 @@
         },
         {
             "name": "guzzlehttp/guzzle",
-            "version": "7.16.3",
+            "version": "7.16.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guzzle/guzzle.git",
-                "reference": "c88a78082757dd5a0c44191651535259fcb6e605"
+                "reference": "9888e03ac453dbea608b68dbd1f5dd6f688d651c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guzzle/guzzle/zipball/c88a78082757dd5a0c44191651535259fcb6e605",
-                "reference": "c88a78082757dd5a0c44191651535259fcb6e605",
+                "url": "https://api.github.com/repos/guzzle/guzzle/zipball/9888e03ac453dbea608b68dbd1f5dd6f688d651c",
+                "reference": "9888e03ac453dbea608b68dbd1f5dd6f688d651c",
                 "shasum": ""
             },
             "require": {
                 "ext-json": "*",
-                "guzzlehttp/promises": "^2.6",
-                "guzzlehttp/psr7": "^2.13.4",
+                "guzzlehttp/promises": "^2.6.1",
+                "guzzlehttp/psr7": "^2.13.5",
                 "php": "^7.2.5 || ^8.0",
                 "psr/http-client": "^1.0",
                 "symfony/deprecation-contracts": "^2.5 || ^3.0",
@@ -754,7 +754,7 @@
             ],
             "support": {
                 "issues": "https://github.com/guzzle/guzzle/issues",
-                "source": "https://github.com/guzzle/guzzle/tree/7.16.3"
+                "source": "https://github.com/guzzle/guzzle/tree/7.16.4"
             },
             "funding": [
                 {
@@ -770,7 +770,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-11-17T16:23:09+00:00"
+            "time": "2026-11-20T18:11:43+00:00"
         },
         {
             "name": "guzzlehttp/promises",
